@@ -1,0 +1,392 @@
+---
+schemaVersion: 1
+id: livetoon-theme
+title: Livetoonスライドテーマ
+author: Livetoon
+company: Livetoon
+theme: company
+canvas: wide
+language: ja-JP
+strictEditable: true
+slides:
+  - id: theme-cover
+    layout: cover
+    notes: |
+      Livetoonの会社標準スライドテーマを紹介します。
+      元のPowerPointテンプレートから、配色、書体、余白、ロゴの使い方を再現しています。
+    sources: []
+  - id: theme-message
+    layout: title-message-body
+    notes: |
+      通常ページでは白背景を主役にし、青い構造線と右上のマークでブランドを示します。
+      メッセージ帯には、そのページで最も伝えたい結論を一文だけ置きます。
+    sources: []
+  - id: theme-two-column-flow
+    layout: title-message-two-column-flow
+    notes: |
+      左から右への変化や因果を示すときは、中央矢印のある2列レイアウトを使います。
+      単純な並列比較では矢印のない汎用2列を選びます。
+    sources: []
+  - id: theme-three-column-header
+    layout: title-message-three-column-header
+    notes: |
+      同じ粒度の三つの分類や観点を並べるためのレイアウトです。
+      見出しを短くし、列ごとの情報量を揃えます。
+    sources: []
+  - id: theme-two-card
+    layout: title-message-two-card
+    notes: |
+      独立性の高い二つの案や役割は、青い見出し面と灰色の本文面を持つカードで示します。
+      カード内へ別のカードを入れず、構造を一段に保ちます。
+    sources: []
+  - id: theme-two-column
+    layout: title-two-column
+    notes: |
+      色には役割を持たせます。
+      青は構造、赤はリスク、金は限定的な注意に使い、意味のない装飾色は増やしません。
+    sources: []
+  - id: theme-three-column
+    layout: title-three-column
+    notes: |
+      和文と英数字の使い分け、標準文字サイズ、文章量の判断基準を共有します。
+    sources: []
+  - id: theme-chart
+    layout: title-chart
+    notes: |
+      数量や順序のあるデータは、ブランドブルーを軸にした配色で表現します。
+      レインボー配色は、順序を持たない多数カテゴリに限ります。
+    sources: []
+  - id: theme-table
+    layout: title-body
+    notes: |
+      表では青系の階層と中立的な罫線を使い、可読性を優先します。
+    sources: []
+  - id: theme-section
+    layout: section
+    notes: |
+      章の切り替わりでは、グラデーション背景と白文字で流れを明確に変えます。
+    sources: []
+  - id: theme-brand
+    layout: brand
+    notes: |
+      最後はロゴバンパーです。
+      このレイアウトには内容を追加せず、そのまま使用します。
+    sources: []
+---
+
+<Slide id="theme-cover">
+
+# Livetoonスライドテーマ
+
+再現可能なMDXから、ブランドに沿った資料を作る
+
+<Text id="cover-date" slot="caption" fontFace="Arial">
+
+2026.07
+
+</Text>
+
+</Slide>
+
+<Slide id="theme-message">
+
+# 白地を主役にし、青い構造線で情報を整理する
+
+<Slot name="message">
+
+1枚につき1つの主張を置き、結論を先に読めるようにする
+
+</Slot>
+
+<Slot name="body">
+
+## 通常ページの基本
+
+- 右上にはLivetoonのマークだけを置く
+- タイトル直下とフッターに青からピンクの細い罫線を置く
+- 本文領域は広く取り、図表と文章の密度を抑える
+- 出典と注記は下部の専用領域へまとめる
+
+</Slot>
+
+</Slide>
+
+<Slide id="theme-two-column-flow">
+
+# 導入判断は、効果と実行条件を対にして比較する
+
+<Slot name="subtitle">
+
+2案の差分を同じ粒度で示す
+
+</Slot>
+
+<Slot name="message">
+
+結論を先に置き、その根拠を左右で対応させる
+
+</Slot>
+
+<Slot name="leftHeader">
+
+現在
+
+</Slot>
+
+<Slot name="left">
+
+- 定型作業に時間を使っている
+  - 判断に必要な情報が散在する
+- 成果の測り方が定まっていない
+
+</Slot>
+
+<Slot name="rightHeader">
+
+次の状態
+
+</Slot>
+
+<Slot name="right">
+
+- 対象業務を絞って自動化する
+  - 判断材料を一か所に集約する
+- 評価指標を事前に決める
+
+</Slot>
+
+<Slot name="caption">
+
+注: 中央の矢印は、左から右への変化がある場合だけ使用する
+
+</Slot>
+
+</Slide>
+
+<Slide id="theme-three-column-header">
+
+# 役割を三つに分けると、並列情報を迷わず追える
+
+<Slot name="subtitle">
+
+同じ粒度・同じ順序で記述する
+
+</Slot>
+
+<Slot name="message">
+
+各列は一つの問いに答え、内容量を揃える
+
+</Slot>
+
+<Slot name="leftHeader">
+
+調査
+
+</Slot>
+
+<Slot name="left">
+
+- 対象業務を選ぶ
+  - 現状時間を計測する
+- 制約条件を確認する
+
+</Slot>
+
+<Slot name="centerHeader">
+
+作成
+
+</Slot>
+
+<Slot name="center">
+
+- AIで初稿を作る
+  - テンプレートを適用する
+- 人が内容を整える
+
+</Slot>
+
+<Slot name="rightHeader">
+
+評価
+
+</Slot>
+
+<Slot name="right">
+
+- 指標で効果を測る
+  - 品質と時間を比較する
+- 成功例を横展開する
+
+</Slot>
+
+<Slot name="caption">
+
+出典: Livetoonスライド制作ガイド
+
+</Slot>
+
+</Slide>
+
+<Slide id="theme-two-card">
+
+# 二つの選択肢は、見出しと説明面を一体で示す
+
+<Slot name="subtitle">
+
+重点を左右で明確に分ける
+
+</Slot>
+
+<Slot name="message">
+
+比較対象を固定し、違いが一目で分かるようにする
+
+</Slot>
+
+<Slot name="leftHeader">
+
+標準運用
+
+</Slot>
+
+<Slot name="left">
+
+- 共通テンプレートから作る
+  - 色と書体を自動で統一する
+- 編集可能なPPTXへ出力する
+
+</Slot>
+
+<Slot name="rightHeader">
+
+重点運用
+
+</Slot>
+
+<Slot name="right">
+
+- 重要ページだけ例外指定する
+  - 図形と画像を絶対配置する
+- 仕上げをPowerPointで調整する
+
+</Slot>
+
+</Slide>
+
+<Slide id="theme-two-column">
+
+# 色は装飾ではなく、情報の役割を伝えるために使う
+
+<Slot name="left">
+
+## 基本色
+
+- **ブランドブルー**：構造、主要系列、見出し
+- **淡いブルー**：段階、補助系列、表の階層
+- **ラベンダー／ピンク**：ブランド装飾
+
+</Slot>
+
+<Slot name="right">
+
+## 限定色
+
+- **赤**：リスク、禁止、機密
+- **金**：注意または一箇所の強調
+- **グレー**：メッセージ帯、罫線、補足
+
+</Slot>
+
+</Slide>
+
+<Slide id="theme-three-column">
+
+# 書体と文字サイズを固定し、資料間のばらつきを抑える
+
+<Slot name="left">
+
+## 日本語
+
+Yu Gothic
+
+本文は18pt相当を下限にする
+
+</Slot>
+
+<Text id="latin-font" slot="center" fontFace="Arial" fontSize={36}>
+
+## Alphanumeric
+
+Arial
+
+Use one line for titles.
+
+</Text>
+
+<Slot name="right">
+
+## 調整順
+
+1. 文章を短くする
+2. レイアウトを変える
+3. 最後にサイズを調整する
+
+</Slot>
+
+</Slide>
+
+<Slide id="theme-chart">
+
+# 順序や量を示すチャートは、青系の濃淡を軸にする
+
+- 主系列：青
+- 比較：淡青・紫
+- 警告値：赤
+
+<Chart
+  id="theme-chart-main"
+  type="bar"
+  seriesName="活用度"
+  showLegend={false}
+  showValue={true}
+  data={[
+    { label: "調査", value: 82 },
+    { label: "作成", value: 68 },
+    { label: "評価", value: 54 },
+    { label: "展開", value: 41 }
+  ]}
+/>
+
+</Slide>
+
+<Slide id="theme-table">
+
+# 表は青系の階層と中立的な罫線で読みやすくする
+
+<Table
+  id="theme-table-main"
+  slot="body"
+  headers={["役割", "色", "主な用途", "避ける用途"]}
+  rows={[
+    ["構造", "#2896F5", "見出し・主要系列", "長文本文"],
+    ["補助", "#A9D5FB", "階層・比較", "警告"],
+    ["危険", "#C00000", "リスク・禁止", "装飾"],
+    ["注意", "#AA902E", "一箇所の強調", "反復"]
+  ]}
+/>
+
+</Slide>
+
+<Slide id="theme-section">
+
+# 次の章へ
+
+テーマは内容を支え、内容より目立たせない
+
+</Slide>
+
+<Slide id="theme-brand">
+
+</Slide>

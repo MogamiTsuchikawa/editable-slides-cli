@@ -660,7 +660,7 @@ async function compileImage(
     return undefined;
   }
   const fit = stringProp(props, "fit", context, node, "Image") ?? "contain";
-  if (fit !== "contain" && fit !== "cover" && fit !== "crop") {
+  if (fit !== "stretch" && fit !== "contain" && fit !== "cover" && fit !== "crop") {
     addPropError(context, node, "Image", `"fit" has unsupported value ${fit}`);
     return undefined;
   }

@@ -256,6 +256,87 @@ export const defaultTheme: ThemeDefinition = {
       showCategoryName: false,
     },
   },
+  authoring: {
+    schemaVersion: 1,
+    intent: "読み手が要点と根拠を短時間で追える、落ち着いた業務資料を作る。",
+    colors: {
+      strategy:
+        "白を主背景にし、brandは構造と主要な強調、accentは補助的な比較だけに使う。",
+      roles: {
+        canvas: {
+          purpose: "標準のスライド背景",
+          useFor: ["通常ページの背景", "表や図の余白"],
+        },
+        text: {
+          purpose: "主要テキスト",
+          useFor: ["タイトル", "本文", "図表ラベル"],
+        },
+        muted: {
+          purpose: "補足情報",
+          useFor: ["注記", "出典", "フッター"],
+          avoidFor: ["主要メッセージ"],
+        },
+        brand: {
+          purpose: "ブランド色と主要な強調",
+          useFor: ["区切り線", "重要な見出し", "主要系列"],
+          avoidFor: ["長い本文の塗りつぶし"],
+        },
+        brandSoft: {
+          purpose: "淡いブランド面",
+          useFor: ["表ヘッダー", "図形の背景", "選択肢の補助"],
+        },
+        accent: {
+          purpose: "副次的な比較色",
+          useFor: ["第2系列", "肯定的な状態"],
+          avoidFor: ["すべての要素への装飾"],
+        },
+        border: {
+          purpose: "境界とガイド",
+          useFor: ["表罫線", "薄い区切り"],
+        },
+        surface: {
+          purpose: "情報をまとめる中立面",
+          useFor: ["補足ボックス", "メッセージ帯"],
+        },
+        danger: {
+          purpose: "警告と否定的な状態",
+          useFor: ["リスク", "禁止", "重大な差異"],
+          avoidFor: ["装飾だけの強調"],
+        },
+      },
+    },
+    typography: {
+      strategy:
+        "見出しと本文の階層をサイズとウェイトで作り、フォント種類は増やさない。",
+      languageFonts: {
+        japanese: "Noto Sans JP",
+        alphanumeric: "Noto Sans JP",
+        code: "Noto Sans Mono",
+      },
+      roles: {
+        title: "スライドの主張。原則1〜2行に収める。",
+        heading: "本文内のまとまりを示す短い見出し。",
+        body: "説明と箇条書き。縮小より文章の短縮を優先する。",
+        caption: "出典、注記、日付などの補助情報。",
+        code: "コードや固定幅で揃える必要がある値だけに使う。",
+      },
+    },
+    layouts: Object.fromEntries(
+      Object.values(layouts).map((item) => [item.id, item.label]),
+    ),
+    rules: {
+      prefer: [
+        "1枚につき1つの主張を置く",
+        "左右の余白と要素間隔を揃える",
+        "文章を短くしてからフォントサイズを調整する",
+      ],
+      avoid: [
+        "意味のない装飾色を増やす",
+        "カードを細かく並べたUI風レイアウト",
+        "テーマ色以外を理由なく追加する",
+      ],
+    },
+  },
 };
 
 export function getDefaultLayout(id: string): LayoutDefinition | undefined {

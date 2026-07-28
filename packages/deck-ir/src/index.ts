@@ -18,6 +18,7 @@ export {
   IconElementIRSchema,
   ImageElementIRSchema,
   LineElementIRSchema,
+  MasterIRSchema,
   ParagraphIRSchema,
   parseDeckIR,
   ResolvedThemeIRSchema,

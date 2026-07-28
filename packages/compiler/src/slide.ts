@@ -351,8 +351,11 @@ export async function compileSlideDocument(
         }),
       );
     } else {
+      // A level-1 heading selects the title slot; the theme decides the title
+      // weight. Treat it as a paragraph here so Markdown does not force bold,
+      // while explicit **strong** runs inside the heading remain bold.
       const conversion = markdownNodesToParagraphs(
-        titleNodes,
+        titleNodes.map((node) => ({ ...node, type: "paragraph" })),
         sourcePath,
         frontmatter.id,
       );

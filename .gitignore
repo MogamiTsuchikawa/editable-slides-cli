@@ -35,5 +35,6 @@ mise.local.lock
 .idea/
 .vscode/
 .DS_Store
+~$*.pptx
 *.swp
 *.swo

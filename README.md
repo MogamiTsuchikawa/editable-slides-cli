@@ -32,6 +32,38 @@ npm run slide -- dev decks/my-deck --open
 npm run slide -- export decks/my-deck --format pptx,pdf
 ```
 
+## Livetoonテーマ
+
+提供されたPowerPointテンプレートを、`company`テーマとして再現しています。表紙、章区切り、ロゴバンパー、本文、メッセージ帯、汎用2／3カラム、矢印付き2カラム、見出し付き3カラム、2カード、左右画像、チャート、自由配置の15レイアウトを利用できます。
+
+```yaml
+theme: company
+```
+
+テーマには元資料から抽出したロゴ、マーク、リボン、青からピンクのグラデーションを同梱しています。通常ページは游ゴシック、英数字だけの要素はArialが標準です。一部だけArialへ変える場合は、要素へ例外を指定できます。
+
+```mdx
+<Text id="metric" fontFace="Arial">
+
+ARR 120%
+
+</Text>
+```
+
+AIが資料を作るときの判断基準は、[`companyTheme.authoring`](./themes/company/src/index.ts)に機械可読な設定として置いています。次の内容をテーマ本体と一緒にバージョン管理します。
+
+- 色トークンごとの目的、推奨用途、避ける用途
+- 日本語／英数字のフォントと、タイトル・本文・注釈の文字サイズ
+- 15レイアウトの用途と、並列比較・方向のある比較・独立カードの使い分け
+- ロゴ、強調色、図表、文字量に関する推奨／禁止ルール
+
+再現サンプルは[`decks/livetoon-theme/deck.mdx`](./decks/livetoon-theme/deck.mdx)です。
+
+```bash
+npm run slide -- dev decks/livetoon-theme --open
+npm run slide -- export decks/livetoon-theme --format pptx,pdf
+```
+
 ## `deck.mdx`
 
 デッキ設定、スライド順、発表者原稿、本文を1ファイルにまとめます。先頭のYAML frontmatterが旧`deck.yaml`相当で、`slides`配列の順に対応する`<Slide id="...">`を記述します。
@@ -126,5 +158,7 @@ LibreOffice、Noto Sans JP、Noto Sans Monoが導入されます。PowerPoint自
 - `dist/example/example.pdf`
 - `dist/example/deck.ir.json`
 - `dist/example/build-manifest.json`
+- `dist/livetoon-theme/livetoon-theme.pptx`
+- `dist/livetoon-theme/livetoon-theme.pdf`
 
 詳細な設計と実装状況は[`PLAN.md`](./PLAN.md)を参照してください。

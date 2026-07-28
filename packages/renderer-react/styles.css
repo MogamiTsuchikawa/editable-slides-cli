@@ -42,6 +42,21 @@
   box-shadow: none;
 }
 
+.lt-master-elements,
+.lt-slide-elements {
+  position: absolute;
+  inset: 0;
+}
+
+.lt-master-elements {
+  z-index: 0;
+  pointer-events: none;
+}
+
+.lt-slide-elements {
+  z-index: 1;
+}
+
 .lt-slide-element {
   position: absolute;
   box-sizing: border-box;

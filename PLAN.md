@@ -6,7 +6,7 @@
 - 正本: `deck.mdx`（デッキ設定、スライド本文、発表者原稿）、テーマ、アセット、配置上書き
 - 成果物: 編集可能なPPTX、PDF、ブラウザプレビュー
 
-## 0. 実装・検証記録（2026-07-28）
+## 0. 実装・検証記録（2026-07-28〜29）
 
 Phase 0〜6.1の実装は完了しており、現在は社内パイロットへ進めるStudio MVPの状態である。
 
@@ -17,6 +17,7 @@ Phase 0〜6.1の実装は完了しており、現在は社内パイロットへ�
 | Studio | 常設サムネイル、Editキャンバス、プロパティパネル、Markdownテキスト保存、debug drawer、print、HMR、Moveable、Selecto、atomic override保存 | editor E2EとWeb視覚回帰が成功。テキスト変更は元の`deck.mdx`へ保存される |
 | PPTX | Text、Image、Shape、Line、Connector、Table、Chart、ノートをネイティブOOXMLとして出力 | 10スライド、10ノート、37 / 37オブジェクトがネイティブ編集可能。macOS PowerPointで修復なしに開き、編集・保存・再オープンを確認 |
 | PDF / CLI | `new`、`dev`、`lint`、`export`、`snapshot`、`inspect`、`doctor`、PDF構造検査、build manifest | PDF 10ページ、本文69件、フォント2系統を検査。対象フォントは埋め込み済みかつUnicode map付き |
+| Livetoonテーマ | 提供PPTXからブランド素材、配色、游ゴシック／Arial、8マスター、15レイアウト、AI向けauthoring設定を再現 | 11ページのテーマ見本をPPTX/PDFへ出力。45 / 45オブジェクトがネイティブ編集可能、11ノート、PPTXはみ出し0件、PDF本文96件・フォント2系統を検査 |
 
 Phase 7で残る作業は、利用者向けドキュメント、`corporate-golden`、2〜3件の社内パイロット、Windows PowerPoint自動検査のnightly運用である。
 
@@ -501,16 +502,36 @@ MDXのJavaScript出力を`eval`やdynamic importで実行しない。MDAST / MDX
 
 1. `cover`
 2. `section`
-3. `title-body`
-4. `title-two-column`
-5. `title-image-left`
-6. `title-image-right`
-7. `title-chart`
-8. `blank`
+3. `brand`
+4. `title-body`
+5. `title-message-body`
+6. `title-two-column`
+7. `title-message-two-column`
+8. `title-three-column`
+9. `title-image-left`
+10. `title-image-right`
+11. `title-chart`
+12. `blank`
+13. `title-message-two-column-flow`
+14. `title-message-three-column-header`
+15. `title-message-two-card`
 
 AIは、原則として既存レイアウトを選択する。`blank`と全面絶対配置は、既存レイアウトでは表現できない場合に限定する。
 
-### 9.3 フォント
+見出し付きの専用レイアウトは、元テンプレートのslide 8〜10を再現する。`title-message-two-column-flow`は左から右への変化・因果、`title-message-three-column-header`は同格の3分類、`title-message-two-card`は独立性の高い2案・2分類に使う。PowerPointのガイド線、選択境界、プレースホルダー破線はテーマ要素へ含めない。
+
+### 9.3 AI向けauthoring設定
+
+`ThemeDefinition.authoring`には、レンダラーへ渡さない制作指示を機械可読なデータとして保持する。
+
+- `colors`: 色トークンごとの目的、推奨用途、避ける用途
+- `typography`: 言語別フォント、文字階層、サイズと縮小判断
+- `layouts`: 各レイアウトを選ぶ意味
+- `rules`: ロゴ、図表、強調、情報量に関する推奨／禁止事項
+
+これによりCodexやClaude Codeは、描画トークンだけでなく「どの場面で何を使うか」も同じテーマから参照できる。設定はテーマ実装と同じ変更単位でレビューし、色・フォント・レイアウトを追加した場合は対応するauthoring設定と整合性テストも更新する。
+
+### 9.4 フォント
 
 `fonts.manifest.json`へ次を記録する。
 
@@ -1101,12 +1122,12 @@ npm run qa
 
 実装を止めるほどの未決事項はない。次は暫定値で開始し、Phase 7のパイロットで見直す。
 
-- 会社標準フォント: 初期fixtureはNoto Sans JPを使用
+- 会社標準フォント: Livetoonテーマは游ゴシック、英数字要素はArial。default fixtureはNoto Sans JPを使用
 - 第一サポートPowerPoint: Microsoft 365最新版
 - 第一サポートOS: 制作はmacOS、最終互換性はWindows PowerPointも確認
 - canvas: 1920 × 1080
 - PowerPointサイズ: 13.333333 × 7.5 inch
-- theme layout数: 8
+- theme layout数: Livetoonテーマは12
 - GUI編集対象: 位置、サイズ、回転、z-index、選択Text要素のMarkdown本文
 - PDF: Chromium描画を基準
 

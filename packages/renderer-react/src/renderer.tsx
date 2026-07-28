@@ -357,7 +357,12 @@ function ImageContent({ element }: { element: FlexibleElement }) {
         draggable={false}
         src={src}
         style={{
-          objectFit: fit === "cover" || fit === "crop" ? "cover" : "contain",
+          objectFit:
+            fit === "stretch"
+              ? "fill"
+              : fit === "cover" || fit === "crop"
+                ? "cover"
+                : "contain",
           objectPosition,
         }}
       />
@@ -583,7 +588,7 @@ function chartSeries(value: unknown): ChartSeries[] {
 
 const CHART_COLORS = ["#2563eb", "#14b8a6", "#f97316", "#8b5cf6", "#e11d48"];
 
-function PieChart({ series }: { series: ChartSeries[] }) {
+function PieChart({ colors, series }: { colors: string[]; series: ChartSeries[] }) {
   const values = series[0]?.values ?? [];
   const total = values.reduce((sum, value) => sum + Math.max(0, value), 0) || 1;
   let cursor = -Math.PI / 2;
@@ -600,7 +605,7 @@ function PieChart({ series }: { series: ChartSeries[] }) {
       <path
         key={index}
         d={`M500 500 L${x1} ${y1} A350 350 0 ${large} 1 ${x2} ${y2} Z`}
-        fill={CHART_COLORS[index % CHART_COLORS.length]}
+        fill={colors[index % colors.length]}
       />
     );
   });
@@ -608,9 +613,11 @@ function PieChart({ series }: { series: ChartSeries[] }) {
 }
 
 function BarChart({
+  colors,
   series,
   showValue,
 }: {
+  colors: string[];
   series: ChartSeries[];
   showValue: boolean;
 }) {
@@ -642,7 +649,9 @@ function BarChart({
                 width={barWidth - 4}
                 height={height}
                 rx="4"
-                fill={CHART_COLORS[seriesIndex % CHART_COLORS.length]}
+                fill={
+                  colors[(series.length === 1 ? index : seriesIndex) % colors.length]
+                }
               />
               {showValue ? (
                 <text
@@ -676,9 +685,11 @@ function BarChart({
 }
 
 function LineChart({
+  colors,
   series,
   showValue,
 }: {
+  colors: string[];
   series: ChartSeries[];
   showValue: boolean;
 }) {
@@ -701,7 +712,7 @@ function LineChart({
             <polyline
               points={points}
               fill="none"
-              stroke={CHART_COLORS[seriesIndex % CHART_COLORS.length]}
+              stroke={colors[seriesIndex % colors.length]}
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth="12"
@@ -743,6 +754,14 @@ function ChartContent({ element }: { element: FlexibleElement }) {
   const series = chartSeries(element.series);
   const chartType = stringValue(element.chartType ?? element.type, "bar");
   const style = isRecord(element.style) ? element.style : {};
+  const styleColors = (Array.isArray(style.colors) ? style.colors : [])
+    .map((color) => stringValue(color))
+    .filter(Boolean);
+  const elementColors = (Array.isArray(element.colors) ? element.colors : [])
+    .map((color) => stringValue(color))
+    .filter(Boolean);
+  const colors = styleColors.length > 0 ? styleColors : elementColors;
+  const palette = colors.length > 0 ? colors : CHART_COLORS;
   const showValue = style.showValue === true;
   return (
     <div className="lt-chart-element" style={{ width: "100%", height: "100%" }}>
@@ -753,11 +772,11 @@ function ChartContent({ element }: { element: FlexibleElement }) {
         viewBox="0 0 1000 1000"
       >
         {chartType === "pie" ? (
-          <PieChart series={series} />
+          <PieChart colors={palette} series={series} />
         ) : chartType === "line" ? (
-          <LineChart series={series} showValue={showValue} />
+          <LineChart colors={palette} series={series} showValue={showValue} />
         ) : (
-          <BarChart series={series} showValue={showValue} />
+          <BarChart colors={palette} series={series} showValue={showValue} />
         )}
       </svg>
     </div>
@@ -822,6 +841,7 @@ function ElementView({
   mode,
   frameOverrides,
   selectedIds,
+  isMaster = false,
   parentOffset = { x: 0, y: 0 },
   onElementPointerDown,
 }: {
@@ -829,6 +849,7 @@ function ElementView({
   mode: RenderMode;
   frameOverrides?: ElementFrameOverrides;
   selectedIds?: ReadonlySet<string>;
+  isMaster?: boolean;
   parentOffset?: { x: number; y: number };
   onElementPointerDown?: ElementPointerHandler;
 }) {
@@ -841,8 +862,8 @@ function ElementView({
     y: frame.y - parentOffset.y,
   };
   const opacity = numberValue(flexible.opacity, 1);
-  const locked = Boolean(flexible.locked) || flexible.editable === false;
-  const selected = selectedIds?.has(element.id) ?? false;
+  const locked = isMaster || Boolean(flexible.locked) || flexible.editable === false;
+  const selected = !isMaster && (selectedIds?.has(element.id) ?? false);
   if (type === "group" && Array.isArray(flexible.children)) {
     const children = flexible.children.filter(isRecord) as unknown as ElementIR[];
     return (
@@ -851,6 +872,7 @@ function ElementView({
         data-element-id={element.id}
         data-slide-element-id={element.id}
         data-element-type={type}
+        data-master-element={isMaster || undefined}
         data-selected={selected}
         data-locked={locked}
         style={{
@@ -858,7 +880,9 @@ function ElementView({
           opacity,
           overflow: "visible",
         }}
-        onPointerDown={(event) => onElementPointerDown?.(element, event)}
+        onPointerDown={
+          isMaster ? undefined : (event) => onElementPointerDown?.(element, event)
+        }
       >
         {children.map((child) => (
           <ElementView
@@ -866,6 +890,7 @@ function ElementView({
             element={child}
             mode={mode}
             frameOverrides={frameOverrides}
+            isMaster={isMaster}
             selectedIds={selectedIds}
             parentOffset={{ x: frame.x, y: frame.y }}
             onElementPointerDown={onElementPointerDown}
@@ -886,6 +911,7 @@ function ElementView({
       data-element-id={element.id}
       data-slide-element-id={element.id}
       data-element-type={type}
+      data-master-element={isMaster || undefined}
       data-selected={selected}
       data-locked={locked}
       style={{
@@ -893,7 +919,9 @@ function ElementView({
         opacity,
         cursor: mode === "edit" ? (locked ? "not-allowed" : "move") : undefined,
       }}
-      onPointerDown={(event) => onElementPointerDown?.(element, event)}
+      onPointerDown={
+        isMaster ? undefined : (event) => onElementPointerDown?.(element, event)
+      }
     >
       {elementContent(flexible, frame)}
       {mode === "debug" ? (
@@ -1019,6 +1047,10 @@ export function SlideCanvas({
     const rightFrame = applyFrameOverride(right, frameOverrides?.[right.id]);
     return leftFrame.zIndex - rightFrame.zIndex;
   });
+  const masterElements = [
+    ...(deck?.theme.masters?.find((master) => master.id === slide.masterId)?.elements ??
+      []),
+  ].sort((left, right) => left.zIndex - right.zIndex);
   return (
     <section
       ref={rootRef}
@@ -1033,16 +1065,23 @@ export function SlideCanvas({
       }}
     >
       {deck ? <style data-livetoon-fonts>{fontFaceRules(deck)}</style> : null}
-      {elements.map((element) => (
-        <ElementView
-          key={element.id}
-          element={element}
-          mode={mode}
-          frameOverrides={frameOverrides}
-          selectedIds={selectedIds}
-          onElementPointerDown={onElementPointerDown}
-        />
-      ))}
+      <div className="lt-master-elements" data-master-id={slide.masterId}>
+        {masterElements.map((element) => (
+          <ElementView key={element.id} element={element} isMaster mode={mode} />
+        ))}
+      </div>
+      <div className="lt-slide-elements">
+        {elements.map((element) => (
+          <ElementView
+            key={element.id}
+            element={element}
+            mode={mode}
+            frameOverrides={frameOverrides}
+            selectedIds={selectedIds}
+            onElementPointerDown={onElementPointerDown}
+          />
+        ))}
+      </div>
       {safeArea && (mode === "debug" || mode === "edit") ? (
         <div
           className="lt-safe-area"

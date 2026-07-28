@@ -36,8 +36,38 @@ export interface ThemeDefaults {
   chart: ChartStyleIR;
 }
 
+export interface ThemeTokenGuidance {
+  purpose: string;
+  useFor: string[];
+  avoidFor?: string[];
+}
+
+export interface ThemeAuthoringGuidance {
+  schemaVersion: 1;
+  intent: string;
+  colors: {
+    strategy: string;
+    roles: Record<string, ThemeTokenGuidance>;
+  };
+  typography: {
+    strategy: string;
+    languageFonts: Record<string, string>;
+    roles: Record<TypographyRole, string>;
+  };
+  layouts: Record<string, string>;
+  rules: {
+    prefer: string[];
+    avoid: string[];
+  };
+}
+
 export interface ThemeDefinition {
   ir: ResolvedThemeIR;
   layouts: Record<string, LayoutDefinition>;
   defaults: ThemeDefaults;
+  /**
+   * Machine-readable instructions for Codex, Claude Code, and other authoring
+   * agents. Renderers intentionally ignore this field.
+   */
+  authoring?: ThemeAuthoringGuidance;
 }

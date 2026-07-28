@@ -371,14 +371,20 @@ function normalizeFontName(value: string): string {
   return value.toLocaleLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+const PDF_FONT_ALIASES: Record<string, string[]> = {
+  yugothic: ["yugothic", "yugo"],
+};
+
 function matchingFontRecords(
   expected: string,
   records: PdfFontRecord[],
 ): PdfFontRecord[] {
   const normalizedExpected = normalizeFontName(expected);
-  return records.filter((record) =>
-    normalizeFontName(record.name).includes(normalizedExpected),
-  );
+  const candidates = PDF_FONT_ALIASES[normalizedExpected] ?? [normalizedExpected];
+  return records.filter((record) => {
+    const normalizedRecord = normalizeFontName(record.name);
+    return candidates.some((candidate) => normalizedRecord.includes(candidate));
+  });
 }
 
 export async function validatePdf(

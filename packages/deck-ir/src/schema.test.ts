@@ -90,6 +90,35 @@ describe("DeckIRSchema", () => {
     expect(DeckIRSchema.parse(createDeck()).slides).toHaveLength(1);
   });
 
+  it("accepts optional typed master elements while keeping empty masters valid", () => {
+    const deck = createDeck();
+    const master = deck.theme.masters[0];
+    if (!master) {
+      throw new Error("Fixture must contain one master");
+    }
+    master.elements = [
+      {
+        id: "master-accent",
+        type: "image",
+        frame: { x: 0, y: 0, w: 1920, h: 12 },
+        rotation: 0,
+        zIndex: 1,
+        opacity: 1,
+        sourceLocation,
+        src: "data:image/png;base64,AA==",
+        fit: "stretch",
+      },
+    ];
+
+    const parsed = DeckIRSchema.parse(deck);
+    expect(parsed.theme.masters[0]?.elements?.[0]).toMatchObject({
+      id: "master-accent",
+      type: "image",
+      fit: "stretch",
+    });
+    expect(DeckIRSchema.parse(createDeck()).theme.masters[0]?.elements).toBeUndefined();
+  });
+
   it("rejects duplicate element ids", () => {
     const deck = createDeck();
     const firstElement = deck.slides[0]?.elements[0];

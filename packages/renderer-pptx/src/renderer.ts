@@ -194,7 +194,14 @@ export async function renderPptx(
     compression: options.compression ?? true,
   });
   const bytes = toUint8Array(generated);
-  const postprocessed = await convertNamedLinesToConnectors(bytes, connectorsBySlide);
+  const connectorsConverted = await convertNamedLinesToConnectors(
+    bytes,
+    connectorsBySlide,
+  );
+  const postprocessed = await convertNamedMasterShapeGeometry(
+    connectorsConverted,
+    readMasterShapePresets(theme),
+  );
   return {
     data: postprocessed,
     slideCount: deck.slides.length,
@@ -917,16 +924,23 @@ function toMasterObject(
   const name = `lt:master:${element.id}`;
   if (element.type === "text") {
     const textElement = element as TextElementIR;
+    const style = textElement.style ?? {};
     return {
       text: {
-        text: textElement.text ?? "",
+        text: textElement.text ?? paragraphsToPlainText(textElement.paragraphs),
         options: {
           ...frame,
           objectName: name,
-          fontFace: textElement.style?.fontFace ?? bodyFont,
-          fontSize: logicalFontSizeToPoints(textElement.style?.fontSize ?? 12, canvas),
-          color: normalizeColor(textElement.style?.color ?? "000000"),
-          margin: textElement.style?.margin ?? 0,
+          rotate: textElement.rotation,
+          transparency: opacityToTransparency(textElement.opacity),
+          fontFace: style.fontFace ?? bodyFont,
+          fontSize: logicalFontSizeToPoints(style.fontSize ?? 12, canvas),
+          color: normalizeColor(style.color ?? "000000"),
+          bold: style.bold ?? isBoldWeight(style.fontWeight),
+          italic: style.italic,
+          align: style.align,
+          valign: mapValign(style.valign ?? style.verticalAlign),
+          margin: style.margin ?? 0,
         },
       },
     };
@@ -940,6 +954,8 @@ function toMasterObject(
             ...frame,
             objectName: name,
             altText: element.alt ?? "",
+            transparency: opacityToTransparency(element.opacity),
+            rotate: element.rotation,
           },
         }
       : undefined;
@@ -951,7 +967,8 @@ function toMasterObject(
         ...frame,
         objectName: name,
         fill: toShapeFill(shape.fill, shape.opacity),
-        line: toShapeLine(shape.line, shape.opacity),
+        line: toShapeLine(shape.line ?? shape.stroke, shape.opacity),
+        rotate: shape.rotation,
       },
     };
   }
@@ -962,10 +979,34 @@ function toMasterObject(
         ...frame,
         objectName: name,
         line: toShapeLine(line.line ?? line.stroke, line.opacity),
+        rotate: line.rotation,
       },
     };
   }
   return undefined;
+}
+
+interface MasterShapePreset {
+  name: string;
+  preset: string;
+}
+
+function readMasterShapePresets(theme: UnknownRecord): MasterShapePreset[] {
+  const presets: MasterShapePreset[] = [];
+  for (const master of readMasters(theme)) {
+    for (const candidate of arrayValue(master.elements ?? master.objects)) {
+      const element = normalizeElement(candidate);
+      if (element.type !== "shape") {
+        continue;
+      }
+      const shape = element as ShapeElementIR;
+      const preset = mapShapeName(shape.shape ?? shape.shapeType ?? "rect");
+      if (preset !== "rect") {
+        presets.push({ name: `lt:master:${shape.id}`, preset });
+      }
+    }
+  }
+  return presets;
 }
 
 function applySlideBackground(slide: PptxSlide, candidate: unknown): void {
@@ -1013,6 +1054,97 @@ async function convertNamedLinesToConnectors(
     compression: "DEFLATE",
     compressionOptions: { level: 6 },
   });
+}
+
+async function convertNamedMasterShapeGeometry(
+  data: Uint8Array,
+  presets: ReadonlyArray<MasterShapePreset>,
+): Promise<Uint8Array> {
+  if (presets.length === 0) {
+    return data;
+  }
+  const zip = await JSZip.loadAsync(data);
+  const layoutPaths = Object.keys(zip.files).filter((path) =>
+    /^ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(path),
+  );
+  const matched = new Set<string>();
+  for (const path of layoutPaths) {
+    const file = zip.file(path);
+    if (!file) {
+      continue;
+    }
+    let xml = await file.async("string");
+    let changed = false;
+    for (const preset of presets) {
+      if (!xml.includes(`name="${escapeXmlAttribute(preset.name)}"`)) {
+        continue;
+      }
+      xml = convertMasterShapeBlock(xml, preset);
+      matched.add(preset.name);
+      changed = true;
+    }
+    if (changed) {
+      zip.file(path, xml);
+    }
+  }
+  const missing = presets.find((preset) => !matched.has(preset.name));
+  if (missing) {
+    throw new PptxRenderError(
+      `Unable to find generated master shape ${missing.name}.`,
+      [
+        {
+          code: "pptx.master-shape-name-missing",
+          message: `Unable to find generated master shape ${missing.name}.`,
+        },
+      ],
+    );
+  }
+  return zip.generateAsync({
+    type: "uint8array",
+    compression: "DEFLATE",
+    compressionOptions: { level: 6 },
+  });
+}
+
+function convertMasterShapeBlock(xml: string, preset: MasterShapePreset): string {
+  if (!/^[A-Za-z][A-Za-z0-9]*$/.test(preset.preset)) {
+    throw new PptxRenderError(
+      `Master shape ${preset.name} uses an invalid preset ${preset.preset}.`,
+      [
+        {
+          code: "pptx.master-shape-invalid-preset",
+          message: `Master shape ${preset.name} uses an invalid preset ${preset.preset}.`,
+        },
+      ],
+    );
+  }
+  const marker = `name="${escapeXmlAttribute(preset.name)}"`;
+  const markerIndex = xml.indexOf(marker);
+  const start = xml.lastIndexOf("<p:sp>", markerIndex);
+  const endStart = xml.indexOf("</p:sp>", markerIndex);
+  if (markerIndex < 0 || start < 0 || endStart < 0) {
+    throw new PptxRenderError(`Generated master shape ${preset.name} is not a shape.`, [
+      {
+        code: "pptx.master-shape-block-missing",
+        message: `Generated master shape ${preset.name} is not a shape.`,
+      },
+    ]);
+  }
+  const end = endStart + "</p:sp>".length;
+  const block = xml.slice(start, end);
+  if (!block.includes('prst="rect"')) {
+    throw new PptxRenderError(
+      `Generated master shape ${preset.name} does not use rectangle geometry.`,
+      [
+        {
+          code: "pptx.master-shape-invalid-geometry",
+          message: `Generated master shape ${preset.name} does not use rectangle geometry.`,
+        },
+      ],
+    );
+  }
+  const converted = block.replace('prst="rect"', `prst="${preset.preset}"`);
+  return `${xml.slice(0, start)}${converted}${xml.slice(end)}`;
 }
 
 function convertConnectorBlock(xml: string, name: string): string {

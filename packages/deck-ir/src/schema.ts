@@ -12,6 +12,7 @@ import type {
   IconElementIR,
   ImageElementIR,
   LineElementIR,
+  MasterIR,
   ParagraphIR,
   ResolvedThemeIR,
   ShapeElementIR,
@@ -150,7 +151,7 @@ export const ImageElementIRSchema: z.ZodType<ImageElementIR> = z
     src: z.string().min(1),
     contentHash: z.string().min(1).optional(),
     mimeType: z.string().min(1).optional(),
-    fit: z.enum(["contain", "cover", "crop"]),
+    fit: z.enum(["stretch", "contain", "cover", "crop"]),
     crop: z
       .object({
         left: unitInterval,
@@ -300,6 +301,14 @@ export const ElementIRSchema: z.ZodType<ElementIR> = z.lazy(() =>
   ]),
 );
 
+export const MasterIRSchema: z.ZodType<MasterIR> = z
+  .object({
+    id: z.string().min(1),
+    background: FillIRSchema,
+    elements: z.array(ElementIRSchema).optional(),
+  })
+  .strict();
+
 export const ResolvedThemeIRSchema: z.ZodType<ResolvedThemeIR> = z
   .object({
     id: z.string().min(1),
@@ -351,14 +360,7 @@ export const ResolvedThemeIRSchema: z.ZodType<ResolvedThemeIR> = z
       .strict(),
     safeArea: FrameIRSchema,
     layoutIds: z.array(z.string().min(1)),
-    masters: z.array(
-      z
-        .object({
-          id: z.string().min(1),
-          background: FillIRSchema,
-        })
-        .strict(),
-    ),
+    masters: z.array(MasterIRSchema),
   })
   .strict();
 

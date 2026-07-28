@@ -120,7 +120,7 @@ export interface ImageElementIR extends ElementBase {
   src: string;
   contentHash?: string;
   mimeType?: string;
-  fit: "contain" | "cover" | "crop";
+  fit: "stretch" | "contain" | "cover" | "crop";
   crop?: ImageCropIR;
   role?: "content" | "background";
 }
@@ -261,6 +261,7 @@ export interface FontRegistrationIR {
 export interface MasterIR {
   id: string;
   background: FillIR;
+  elements?: ElementIR[];
 }
 
 export interface ResolvedThemeIR {

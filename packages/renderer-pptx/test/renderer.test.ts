@@ -239,6 +239,145 @@ describe("renderer-pptx", () => {
     expect(notesXml).toContain("https://example.com/research");
   });
 
+  it("exports paragraph text, data URI images, shapes, and lines on a slide master", async () => {
+    const deck = componentDeck();
+    deck.theme = {
+      fonts: {
+        heading: { family: "Noto Sans JP" },
+        body: { family: "Noto Sans JP" },
+      },
+      colors: { background: "#FFFFFF" },
+      masters: [
+        {
+          id: "branded",
+          background: { type: "solid", color: "#F7F7F7" },
+          elements: [
+            {
+              id: "brand-title",
+              type: "text",
+              frame: { x: 80, y: 40, w: 720, h: 80 },
+              rotation: 0,
+              zIndex: 1,
+              opacity: 1,
+              paragraphs: [
+                {
+                  runs: [{ text: "Master paragraph text" }],
+                },
+              ],
+              style: {
+                fontFace: "Noto Sans JP",
+                fontSize: 24,
+                color: "#123456",
+                fontWeight: 700,
+              },
+            },
+            {
+              id: "brand-image",
+              type: "image",
+              frame: { x: 0, y: 1050, w: 1920, h: 30 },
+              rotation: 0,
+              zIndex: 2,
+              opacity: 1,
+              src: PIXEL_PNG,
+              fit: "stretch",
+              alt: "brand gradient",
+            },
+            {
+              id: "brand-shape",
+              type: "shape",
+              shape: "rect",
+              frame: { x: 1600, y: 40, w: 200, h: 60 },
+              rotation: 0,
+              zIndex: 3,
+              opacity: 1,
+              fill: { type: "solid", color: "#FFCC00" },
+              stroke: { color: "#123456", width: 2 },
+            },
+            {
+              id: "brand-round-rect",
+              type: "shape",
+              shape: "roundRect",
+              frame: { x: 1320, y: 40, w: 240, h: 60 },
+              rotation: 0,
+              zIndex: 3,
+              opacity: 1,
+              fill: { type: "solid", color: "#F2F2F2" },
+            },
+            {
+              id: "brand-triangle",
+              type: "shape",
+              shape: "triangle",
+              frame: { x: 1280, y: 140, w: 280, h: 60 },
+              rotation: 90,
+              zIndex: 3,
+              opacity: 1,
+              fill: { type: "solid", color: "#D9D9D9" },
+            },
+            {
+              id: "brand-line",
+              type: "line",
+              frame: { x: 80, y: 140, w: 1720, h: 0 },
+              rotation: 0,
+              zIndex: 4,
+              opacity: 1,
+              stroke: { color: "#123456", width: 2 },
+            },
+          ],
+        },
+      ],
+    };
+    const firstSlide = deck.slides[0];
+    if (!firstSlide) {
+      throw new Error("Fixture must contain one slide");
+    }
+    firstSlide.masterId = "branded";
+
+    const rendered = await renderPptx(deck, { strictEditable: true });
+    const zip = await JSZip.loadAsync(rendered.data);
+    const masterLayoutPaths = Object.keys(zip.files)
+      .filter((name) => /^ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(name))
+      .sort();
+    const masterLayoutXmlParts = await Promise.all(
+      masterLayoutPaths.map((name) => zip.file(name)?.async("string") ?? ""),
+    );
+    const masterLayoutXml = masterLayoutXmlParts.join("\n");
+    const brandedLayoutIndex = masterLayoutXmlParts.findIndex((xml) =>
+      xml.includes("Master paragraph text"),
+    );
+    const brandedLayoutPath = masterLayoutPaths[brandedLayoutIndex];
+    const slideRelationships = await zip
+      .file("ppt/slides/_rels/slide1.xml.rels")
+      ?.async("string");
+    const masterShapeBlock = (name: string): string => {
+      const markerIndex = masterLayoutXml.indexOf(`name="${name}"`);
+      const start = masterLayoutXml.lastIndexOf("<p:sp>", markerIndex);
+      const end = masterLayoutXml.indexOf("</p:sp>", markerIndex);
+      return markerIndex >= 0 && start >= 0 && end >= 0
+        ? masterLayoutXml.slice(start, end + "</p:sp>".length)
+        : "";
+    };
+
+    expect(masterLayoutPaths.length).toBeGreaterThanOrEqual(2);
+    expect(masterLayoutXml).toContain("Master paragraph text");
+    expect(masterLayoutXml).toContain('name="lt:master:brand-title"');
+    expect(masterLayoutXml).toContain('name="lt:master:brand-image"');
+    expect(masterLayoutXml).toContain('name="lt:master:brand-shape"');
+    expect(masterShapeBlock("lt:master:brand-round-rect")).toContain(
+      '<a:prstGeom prst="roundRect">',
+    );
+    expect(masterShapeBlock("lt:master:brand-triangle")).toContain(
+      '<a:prstGeom prst="triangle">',
+    );
+    expect(masterLayoutXml).toContain('name="lt:master:brand-line"');
+    expect(brandedLayoutPath).toBeTruthy();
+    expect(slideRelationships).toContain(
+      `../slideLayouts/${brandedLayoutPath?.split("/").at(-1)}`,
+    );
+    expect(
+      Object.keys(zip.files).some((name) => /^ppt\/media\/.*\.png$/.test(name)),
+    ).toBe(true);
+  });
+
   it("rejects an explicit raster fallback in strict-editable mode", async () => {
     const deck = componentDeck();
     const element = deck.slides[0]?.elements[0] as Record<string, unknown>;

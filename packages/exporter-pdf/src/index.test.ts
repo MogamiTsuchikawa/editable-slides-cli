@@ -56,6 +56,7 @@ printf "%s\\n" "------------------------------------ ----------------- ---------
 printf "%s\\n" "AAAAAA+Helvetica                     Type 1            WinAnsi          yes yes yes      4  0"
 printf "%s\\n" "BAAAAA+NotoSansJP-Thin_Bold          Type 3            Custom           yes yes yes      5  0"
 printf "%s\\n" "CAAAAA+NotoSansMono-Regular          Type 3            Custom           yes yes yes      6  0"
+printf "%s\\n" "DAAAAA+YuGo-Medium                   Type 3            Custom           yes yes yes      7  0"
 `,
     ),
   ]);
@@ -94,7 +95,7 @@ describe("inspectPdf", () => {
           expectedWidthPoints: width,
           expectedHeightPoints: height,
           expectedText: ["Livetoon PDF inspection"],
-          expectedFonts: ["Helvetica", "Noto Sans JP", "Noto Sans Mono"],
+          expectedFonts: ["Helvetica", "Noto Sans JP", "Noto Sans Mono", "Yu Gothic"],
           requireEmbeddedFonts: true,
           requireUnicodeFonts: true,
         },

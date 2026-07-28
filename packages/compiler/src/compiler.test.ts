@@ -79,6 +79,30 @@ describe("compileDeck", () => {
     );
   });
 
+  it("lets the theme control the title font weight", async () => {
+    const regularTitleTheme = structuredClone(defaultTheme);
+    const titleSlot = regularTitleTheme.layouts["title-body"]?.slots.title;
+    if (!titleSlot) {
+      throw new Error("title-body must define a title slot");
+    }
+    titleSlot.textStyle = {
+      ...titleSlot.textStyle,
+      fontWeight: 400,
+    };
+
+    const result = await compileDeck(fixtureConfig("minimal"), {
+      theme: regularTitleTheme,
+    });
+    const title = result.deck.slides[0]?.elements.find(
+      (element) => element.id === "minimal--title" && element.type === "text",
+    );
+
+    expect(title?.style?.fontWeight).toBe(400);
+    expect(
+      title?.type === "text" ? title.paragraphs?.[0]?.runs[0]?.bold : undefined,
+    ).toBeUndefined();
+  });
+
   it("compiles the real-file component gallery into native DeckIR elements", async () => {
     const result = await compileDeck(fixtureConfig("component-gallery"));
     const slide = result.deck.slides[0];
@@ -172,6 +196,7 @@ describe("compileDeck", () => {
         src: expect.stringMatching(/^data:image\/svg\+xml;base64,[A-Za-z0-9+/]+=*$/),
         mimeType: "image/svg+xml",
         contentHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+        fit: "stretch",
       }),
     );
     expect(
