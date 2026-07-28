@@ -1,0 +1,144 @@
+---
+id: component-gallery
+layout: blank
+notes: |
+  許可された主要コンポーネントを一枚で検証します。
+sources:
+  - label: Compiler fixture
+---
+
+# Component gallery
+
+<Text
+  id="gallery-text"
+  x={96}
+  y={220}
+  w={560}
+  h={150}
+  role="body"
+  fontSize={28}
+  color="#172033"
+  textFit="shrink"
+>
+  **Text** supports Markdown runs and absolute positioning.
+</Text>
+
+<Image
+  id="gallery-image"
+  x={700}
+  y={220}
+  w={300}
+  h={170}
+  src="../assets/gallery-mark.svg"
+  fit="contain"
+  role="content"
+  alt="Component gallery mark"
+/>
+
+<Shape
+  id="gallery-shape"
+  x={1050}
+  y={220}
+  w={250}
+  h={170}
+  shape="roundRect"
+  fill="#EAF0FF"
+  stroke="#2857D9"
+  strokeWidth={3}
+/>
+
+<Line
+  id="gallery-line"
+  x1={1360}
+  y1={250}
+  x2={1760}
+  y2={360}
+  color="#2857D9"
+  width={5}
+/>
+
+<Table
+  id="gallery-table"
+  x={96}
+  y={440}
+  w={760}
+  h={250}
+  headers={["Component", "Output"]}
+  rows={[
+    ["Text", "native text"],
+    ["Image", "independent image"],
+    ["Shape", "native shape"]
+  ]}
+/>
+
+<Chart
+  id="gallery-chart"
+  x={920}
+  y={440}
+  w={840}
+  h={300}
+  type="bar"
+  title="Quarterly adoption"
+  seriesName="Teams"
+  showLegend={false}
+  showValue={true}
+  data={[
+    { label: "Q1", value: 12 },
+    { label: "Q2", value: 24 },
+    { label: "Q3", value: 38 }
+  ]}
+/>
+
+<Group
+  id="gallery-group"
+  x={96}
+  y={790}
+  w={700}
+  h={190}
+>
+  <Shape
+    id="group-card"
+    x={120}
+    y={815}
+    w={180}
+    h={130}
+    shape="ellipse"
+    fill="#00A58E"
+    strokeWidth={0}
+  />
+  <Text
+    id="group-label"
+    x={330}
+    y={815}
+    w={420}
+    h={130}
+    role="caption"
+    fontSize={24}
+    verticalAlign="middle"
+  >
+    Group keeps child elements editable.
+  </Text>
+</Group>
+
+<Icon
+  id="gallery-icon"
+  x={850}
+  y={810}
+  w={150}
+  h={130}
+  src="../assets/gallery-mark.svg"
+  color="#2857D9"
+  alt="Gallery icon"
+/>
+
+<Connector
+  id="gallery-connector"
+  x1={300}
+  y1={875}
+  x2={1050}
+  y2={305}
+  color="#5F6B7A"
+  width={2}
+  from="group-card"
+  to="gallery-shape"
+/>

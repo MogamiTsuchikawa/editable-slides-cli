@@ -1,0 +1,39 @@
+{
+  "name": "@livetoon/slide-studio",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run src server",
+    "test:e2e": "vitest run e2e"
+  },
+  "dependencies": {
+    "@fontsource-variable/noto-sans-jp": "^5.3.0",
+    "@fontsource-variable/noto-sans-mono": "^5.3.0",
+    "@livetoon/slide-deck-ir": "*",
+    "@livetoon/slide-renderer-react": "*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-moveable": "^0.56.0",
+    "react-selecto": "^1.26.0"
+  },
+  "devDependencies": {
+    "@livetoon/slide-theme-default": "*",
+    "@types/node": "^24.0.0",
+    "@types/pngjs": "^6.0.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "jsdom": "^26.0.0",
+    "pixelmatch": "^7.2.0",
+    "playwright": "^1.62.0",
+    "pngjs": "^7.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.0.0",
+    "vitest": "^4.1.0"
+  }
+}

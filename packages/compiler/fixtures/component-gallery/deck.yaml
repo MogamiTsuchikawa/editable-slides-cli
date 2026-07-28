@@ -1,0 +1,9 @@
+schemaVersion: 1
+id: fixture-component-gallery
+title: Component gallery compiler fixture
+theme: default
+canvas: wide
+language: ja-JP
+strictEditable: true
+slides:
+  - slides/001-components.mdx

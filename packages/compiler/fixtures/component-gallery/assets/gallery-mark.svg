@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-labelledby="title">
+  <title id="title">Livetoon component gallery mark</title>
+  <rect width="320" height="180" rx="28" fill="#EAF0FF"/>
+  <circle cx="90" cy="90" r="48" fill="#2857D9"/>
+  <path d="M78 62h24v56H78zM62 78h56v24H62z" fill="#fff"/>
+  <path d="M164 62h104v18H164zM164 91h84v14H164zM164 116h64v14H164z" fill="#00A58E"/>
+</svg>

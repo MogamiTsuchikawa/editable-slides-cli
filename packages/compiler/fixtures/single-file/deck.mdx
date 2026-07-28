@@ -1,0 +1,57 @@
+---
+schemaVersion: 1
+id: fixture-single-file
+title: Single-file fixture
+theme: default
+canvas: wide
+language: ja-JP
+strictEditable: true
+slides:
+  - id: single-intro
+    layout: title-body
+    notes: |
+      単一ファイルの発表者原稿です。
+    sources: []
+  - id: single-visual
+    layout: blank
+    notes: ""
+    sources: []
+---
+
+<Slide id="single-intro">
+
+# ひとつのMDXで作る
+
+<Slot name="body">
+
+スライド本体と設定を同じファイルで管理します。
+
+編集位置には実際のMarkdown本文だけを記録します。
+
+</Slot>
+
+</Slide>
+
+<Slide id="single-visual">
+
+<Text id="single-visual-title" x={120} y={100} w={900} h={120} role="title">
+  埋め込み画像
+</Text>
+
+<Image
+  id="single-visual-image"
+  src="asset:blue-mark"
+  x={120}
+  y={280}
+  w={480}
+  h={240}
+  alt="Blue mark"
+/>
+
+</Slide>
+
+<Assets>
+  <Asset id="blue-mark" mimeType="image/svg+xml" encoding="base64">
+    PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI0MCI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMjU2M2ViIi8+PC9zdmc+
+  </Asset>
+</Assets>

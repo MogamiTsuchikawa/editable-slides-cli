@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v3
+        with:
+          version: 2026.3.10
+          install: true
+          cache: true
+          experimental: true
+      - run: mise run ci
+      - name: Upload Web visual regression artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-visual-regression
+          path: output/playwright/visual-regression/
+          if-no-files-found: ignore

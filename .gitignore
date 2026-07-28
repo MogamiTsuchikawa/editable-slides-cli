@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build and generated artifacts
+dist/
+decks/*/dist/
+**/.livetoon/
+coverage/
+output/
+playwright-report/
+test-results/
+.slide-cache/
+*.tsbuildinfo
+
+# Tool caches and temporary files
+.playwright-cli/
+.vite/
+.cache/
+tmp/
+*.tmp
+*.log
+npm-debug.log*
+
+# Local mise overrides
+.mise.local.toml
+mise.local.toml
+mise.local.lock
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo

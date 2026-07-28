@@ -1,0 +1,412 @@
+---
+schemaVersion: 1
+id: example
+title: AI活用を業務単位で始める
+author: Livetoon
+company: Livetoon
+theme: company
+canvas: wide
+language: ja-JP
+strictEditable: true
+slides:
+  - id: adoption-cover
+    layout: cover
+    notes: |
+      本日は、AI活用を再現性のある形で始める方法を説明します。
+    sources: []
+  - id: adoption-agenda
+    layout: title-body
+    notes: |
+      最初に、今日のゴールを共有します。
+      技術導入そのものではなく、業務成果を測れる進め方を持ち帰ってください。
+    sources: []
+  - id: adoption-summary
+    layout: title-two-column
+    notes: |
+      左側では導入原則、右側では検証サイクルを説明します。
+      最初から全社最適を狙わず、測定可能な業務から始めます。
+    sources:
+      - label: 社内AI活用調査 2026
+        url: https://example.com/research
+  - id: adoption-selection
+    layout: title-two-column
+    notes: |
+      左側の条件を満たす業務から候補を集め、右側の条件で優先順位を下げます。
+      最初の案件は、精度よりも学習速度を重視します。
+    sources:
+      - label: 社内AI活用ガイドライン（サンプル）
+  - id: adoption-workflow
+    layout: blank
+    notes: |
+      検証は、入力を揃える、AIで下書きを作る、人が確認する、の三段階です。
+      確認結果を次の入力ルールへ戻すことで、品質を再現できるようにします。
+    sources: []
+  - id: adoption-guardrails
+    layout: title-two-column
+    notes: |
+      AIへ任せる範囲と、人が責任を持つ範囲を最初に分けます。
+      特に社外公開、個人情報、最終意思決定は人の確認を必須にします。
+    sources:
+      - label: 社内情報管理規程を参照
+  - id: adoption-operation
+    layout: title-image-left
+    notes: |
+      検証サイクルを回す役割は、業務担当、AI支援担当、承認者の三つです。
+      一人に集中させず、判断と改善の責任を分けます。
+    sources: []
+  - id: adoption-chart
+    layout: title-chart
+    notes: |
+      調査や議事録など、定型度の高い業務ほど先に成果が出ています。
+      この数値はサンプルです。
+    sources:
+      - label: 社内PoC集計（サンプル）
+  - id: adoption-metrics
+    layout: title-body
+    notes: |
+      速度だけではなく、品質と利用の継続性を同時に測ります。
+      導入前の基準値を一週間取得してから、二週間の検証と比較します。
+    sources:
+      - label: 評価指標テンプレート（サンプル）
+  - id: adoption-next-step
+    layout: section
+    notes: |
+      まず対象業務を一つ選び、二週間だけ検証してください。
+      成功条件と確認担当を決めたら、すぐに小さく始められます。
+    sources: []
+---
+
+<Slide id="adoption-cover">
+
+# AI活用を業務単位で始める
+
+小さく検証し、成功パターンを横展開する
+
+<Text id="cover-date" slot="caption" align="right">
+
+Livetoon / 2026
+
+</Text>
+
+</Slide>
+
+<Slide id="adoption-agenda">
+
+# あああああ
+
+1. **どの業務から始めるか**
+2. **何を成果指標にするか**
+3. **誰が品質を確認するか**
+4. **どのタイミングで横展開するか**
+
+<Text id="agenda-caption" slot="caption" align="right">
+
+GOAL / 再現できる小さな成功をつくる
+
+</Text>
+
+</Slide>
+
+<Slide id="adoption-summary">
+
+# 導入は「対象業務」と「評価指標」をセットで決める
+
+<Slot name="left">
+
+## 導入原則
+
+- 定型作業から始める
+- 効果を数値化する
+- 成功例を横展開する
+
+</Slot>
+
+<Slot name="right">
+
+<Image
+  id="adoption-cycle"
+  src="asset:adoption-cycle"
+  fit="contain"
+  alt="調査、作成、評価を循環する導入サイクル"
+/>
+
+</Slot>
+
+</Slide>
+
+<Slide id="adoption-selection">
+
+# 最初の対象は「頻度・定型度・確認可能性」で選ぶ
+
+<Slot name="left">
+
+## 優先する業務
+
+- 毎週または毎日発生する
+- 入力と出力の型が決まっている
+- 人が短時間で正誤を確認できる
+
+</Slot>
+
+<Slot name="right">
+
+## 後回しにする業務
+
+- 一度きりで再利用できない
+- 判断根拠を説明しにくい
+- 誤りがそのまま社外へ出る
+
+</Slot>
+
+</Slide>
+
+<Slide id="adoption-workflow">
+
+# 人の確認を残したまま、3ステップで回す
+
+<Shape
+  id="workflow-input"
+  x={120}
+  y={300}
+  w={460}
+  h={360}
+  shape="roundRect"
+  fill="#EAF0FF"
+  stroke="#2857D9"
+  strokeWidth={3}
+/>
+
+<Text
+  id="workflow-input-text"
+  x={170}
+  y={365}
+  w={360}
+  h={230}
+  role="heading"
+  fontSize={34}
+  align="center"
+  verticalAlign="middle"
+>
+  **1. 入力を揃える**
+
+  目的・材料・出力形式
+</Text>
+
+<Connector
+  id="workflow-input-to-draft"
+  x1={580}
+  y1={480}
+  x2={730}
+  y2={480}
+  color="#2857D9"
+  width={4}
+  from="workflow-input"
+  to="workflow-draft"
+/>
+
+<Shape
+  id="workflow-draft"
+  x={730}
+  y={300}
+  w={460}
+  h={360}
+  shape="roundRect"
+  fill="#F5F7FA"
+  stroke="#5F6B7A"
+  strokeWidth={3}
+/>
+
+<Text
+  id="workflow-draft-text"
+  x={780}
+  y={365}
+  w={360}
+  h={230}
+  role="heading"
+  fontSize={34}
+  align="center"
+  verticalAlign="middle"
+>
+  **2. AIで下書き**
+
+  定型処理を高速化
+</Text>
+
+<Connector
+  id="workflow-draft-to-review"
+  x1={1190}
+  y1={480}
+  x2={1340}
+  y2={480}
+  color="#2857D9"
+  width={4}
+  from="workflow-draft"
+  to="workflow-review"
+/>
+
+<Shape
+  id="workflow-review"
+  x={1340}
+  y={300}
+  w={460}
+  h={360}
+  shape="roundRect"
+  fill="#E6F7F4"
+  stroke="#00A58E"
+  strokeWidth={3}
+/>
+
+<Text
+  id="workflow-review-text"
+  x={1390}
+  y={365}
+  w={360}
+  h={230}
+  role="heading"
+  fontSize={34}
+  align="center"
+  verticalAlign="middle"
+>
+  **3. 人が確認**
+
+  判断・例外・説明責任
+</Text>
+
+</Slide>
+
+<Slide id="adoption-guardrails">
+
+# 自動化する工程と、人が責任を持つ工程を分ける
+
+<Slot name="left">
+
+## AIへ任せる
+
+- 情報の分類と要約
+- 定型文の初稿
+- 表記ゆれと抜け漏れの検査
+
+</Slot>
+
+<Slot name="right">
+
+## 人が確認する
+
+- 意思決定と承認
+- 機密情報・個人情報の取扱い
+- 社外公開前の最終レビュー
+
+</Slot>
+
+</Slide>
+
+<Slide id="adoption-operation">
+
+# 役割を分けると、改善が止まらない
+
+<Image
+  id="operation-cycle"
+  src="asset:adoption-cycle"
+  fit="contain"
+  alt="調査、作成、評価を循環する運用サイクル"
+/>
+
+<Slot name="right">
+
+## 最小の運用体制
+
+- **業務担当**: 入力と正解条件を定義
+- **AI支援担当**: プロンプトとテンプレートを改善
+- **承認者**: 品質基準と横展開を判断
+
+</Slot>
+
+<Text id="operation-caption" slot="caption" align="right">
+
+週次で失敗例も共有する
+
+</Text>
+
+</Slide>
+
+<Slide id="adoption-chart">
+
+# 定型度が高い業務ほど効果を測りやすい
+
+- 調査と要約は削減率が高い
+- 作成業務はレビュー工程も測定する
+
+<Chart
+  id="adoption-chart-main"
+  type="bar"
+  seriesName="削減率"
+  showLegend={false}
+  showValue={true}
+  data={[
+    { label: "調査", value: 80 },
+    { label: "議事録", value: 65 },
+    { label: "資料作成", value: 55 }
+  ]}
+/>
+
+<Text
+  id="sample-label"
+  x={120}
+  y={990}
+  w={420}
+  h={40}
+  role="code"
+  fontFace="Noto Sans Mono"
+  fontSize={16}
+  color="#5F6B7A"
+>
+  SAMPLE / 2026
+</Text>
+
+</Slide>
+
+<Slide id="adoption-metrics">
+
+# 効果は「速度・品質・定着」の3方向で測る
+
+<Table
+  id="metrics-table"
+  x={120}
+  y={280}
+  w={1680}
+  h={560}
+  headers={["観点", "指標", "測り方", "初期目標"]}
+  rows={[
+    ["速度", "作業時間", "着手から完了まで", "20%削減"],
+    ["品質", "修正率", "レビュー時の修正件数", "悪化させない"],
+    ["定着", "利用率", "対象業務で使った割合", "70%以上"]
+  ]}
+/>
+
+<Text
+  id="metrics-caption"
+  x={120}
+  y={900}
+  w={1680}
+  h={80}
+  role="caption"
+  align="right"
+>
+  導入前の基準値と同じ条件で比較する
+</Text>
+
+</Slide>
+
+<Slide id="adoption-next-step">
+
+# 次の一歩
+
+対象業務を一つ選び、2週間で検証する
+
+</Slide>
+
+<Assets>
+  <Asset id="adoption-cycle" mimeType="image/svg+xml" encoding="base64">
+    PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNjUwIiB2aWV3Qm94PSIwIDAgODAwIDY1MCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsbGVkYnk9InRpdGxlIGRlc2NyaXB0aW9uIj4KICA8dGl0bGUgaWQ9InRpdGxlIj5BSeWwjuWFpeOCteOCpOOCr+ODqzwvdGl0bGU+CiAgPGRlc2MgaWQ9ImRlc2NyaXB0aW9uIj7oqr/mn7vjgIHkvZzmiJDjgIHoqZXkvqHjgpLpoIbnlarjgavnubDjgorov5TjgZnlm7M8L2Rlc2M+CiAgPHJlY3Qgd2lkdGg9IjgwMCIgaGVpZ2h0PSI2NTAiIHJ4PSI0MCIgZmlsbD0iI0Y1RjdGQSIvPgogIDxnIGZvbnQtZmFtaWx5PSJOb3RvIFNhbnMgSlAsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iNDIiIGZvbnQtd2VpZ2h0PSI3MDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPgogICAgPHJlY3QgeD0iMjcwIiB5PSI3MCIgd2lkdGg9IjI2MCIgaGVpZ2h0PSIxMTAiIHJ4PSIyNCIgZmlsbD0iI0VBRjBGRiIgc3Ryb2tlPSIjMjg1N0Q5IiBzdHJva2Utd2lkdGg9IjQiLz4KICAgIDx0ZXh0IHg9IjQwMCIgeT0iMTQwIiBmaWxsPSIjMTcyMDMzIj7oqr/mn7s8L3RleHQ+CiAgICA8cmVjdCB4PSI4MCIgeT0iNDAwIiB3aWR0aD0iMjYwIiBoZWlnaHQ9IjExMCIgcng9IjI0IiBmaWxsPSIjRTdGOEY0IiBzdHJva2U9IiMwMEE1OEUiIHN0cm9rZS13aWR0aD0iNCIvPgogICAgPHRleHQgeD0iMjEwIiB5PSI0NzAiIGZpbGw9IiMxNzIwMzMiPuS9nOaIkDwvdGV4dD4KICAgIDxyZWN0IHg9IjQ2MCIgeT0iNDAwIiB3aWR0aD0iMjYwIiBoZWlnaHQ9IjExMCIgcng9IjI0IiBmaWxsPSIjRkZGM0UwIiBzdHJva2U9IiNGNzkwMDkiIHN0cm9rZS13aWR0aD0iNCIvPgogICAgPHRleHQgeD0iNTkwIiB5PSI0NzAiIGZpbGw9IiMxNzIwMzMiPuipleS+oTwvdGV4dD4KICA8L2c+CiAgPGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNUY2QjdBIiBzdHJva2Utd2lkdGg9IjEyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgogICAgPHBhdGggZD0iTTMxMCAxOTAgQzIyMCAyMzAgMTkwIDMwMCAyMDAgMzcwIi8+CiAgICA8cGF0aCBkPSJNMzYwIDQ3MCBDNDAwIDUyMCA0NTAgNTIwIDQ5MCA0NzAiLz4KICAgIDxwYXRoIGQ9Ik02MDAgMzcwIEM2MTAgMzAwIDU4MCAyMzAgNDkwIDE5MCIvPgogIDwvZz4KPC9zdmc+Cg==
+  </Asset>
+</Assets>

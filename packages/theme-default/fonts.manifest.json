@@ -1,0 +1,28 @@
+{
+  "fonts": [
+    {
+      "family": "Noto Sans JP",
+      "weight": 400,
+      "style": "normal",
+      "source": "system",
+      "license": "OFL-1.1",
+      "usage": ["body"]
+    },
+    {
+      "family": "Noto Sans JP",
+      "weight": 700,
+      "style": "normal",
+      "source": "system",
+      "license": "OFL-1.1",
+      "usage": ["heading"]
+    },
+    {
+      "family": "Noto Sans Mono",
+      "weight": 400,
+      "style": "normal",
+      "source": "system",
+      "license": "OFL-1.1",
+      "usage": ["code"]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+min_version = "2026.3.10"
+
+[settings]
+experimental = true
+
+[tools]
+node = "24.0.1"
+"conda:poppler" = "26.07.0"
+
+[tasks.setup]
+description = "開発に必要なnpm依存、Playwright Chromiumを導入してdoctorを実行する"
+run = ["npm ci", "npx playwright install chromium", "npm run slide -- doctor"]
+
+[tasks."setup:ci"]
+description = "CI用のnpm依存とPlaywright Chromium・OS依存を導入する"
+hide = true
+run = ["npm ci", "npx playwright install --with-deps chromium"]
+
+[tasks."setup:office"]
+description = "macOSへ任意のLibreOfficeとPowerPoint互換フォントを導入する"
+run = """
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "setup:officeはmacOS向けです。LinuxではLibreOfficeとNotoフォントをOSのパッケージマネージャーで導入してください。"
+  exit 0
+fi
+if ! command -v brew >/dev/null 2>&1; then
+  echo "Homebrewが必要です: https://brew.sh/"
+  exit 1
+fi
+brew install --cask libreoffice font-noto-sans-jp font-noto-sans-mono
+"""
+run_windows = "echo setup:officeはmacOS向けです。PowerPointとNoto Sans JP / Noto Sans Monoを手動で導入してください。"
+
+[tasks.doctor]
+description = "ローカル環境の必須・任意依存を診断する"
+run = "npm run slide -- doctor"
+
+[tasks.dev]
+description = "exampleデッキをStudioで開く"
+run = "npm run slide -- dev decks/example --open"
+
+[tasks.build]
+description = "全ワークスペースをビルドする"
+run = "npm run build"
+
+[tasks.qa]
+description = "lint、型検査、ユニットテストを実行する"
+run = "npm run qa"
+
+[tasks."test:visual"]
+description = "Studioの視覚回帰テストを実行する"
+run = "npm run test:visual"
+
+[tasks.export]
+description = "exampleデッキを編集可能PPTXとPDFへ出力する"
+run = "npm run slide -- export decks/example --format pptx,pdf"
+
+[tasks.ci]
+description = "CIの全品質ゲートを実行する"
+depends = ["setup:ci"]
+env = { SLIDE_BROWSER_E2E = "1" }
+run = ["npm run qa", "npm run build", "npm run test:visual", "npm run test:pdf"]

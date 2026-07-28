@@ -1,0 +1,241 @@
+import type { Diagnostic, ParagraphIR, TextRunIR } from "@livetoon/slide-deck-ir";
+import { toString as mdastToString } from "mdast-util-to-string";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
+
+import { createDiagnostic } from "./diagnostics.js";
+import type { AstNode } from "./mdx-ast.js";
+import { sourceLocationForNode } from "./mdx-ast.js";
+
+interface RunMarks {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  href?: string;
+  fontFace?: string;
+}
+
+function createRun(text: string, marks: RunMarks): TextRunIR {
+  const run: TextRunIR = { text };
+  if (marks.bold) {
+    run.bold = true;
+  }
+  if (marks.italic) {
+    run.italic = true;
+  }
+  if (marks.underline) {
+    run.underline = true;
+  }
+  if (marks.href) {
+    run.href = marks.href;
+  }
+  if (marks.fontFace) {
+    run.fontFace = marks.fontFace;
+  }
+  return run;
+}
+
+function inlineRuns(
+  nodes: AstNode[],
+  marks: RunMarks,
+  diagnostics: Diagnostic[],
+  sourcePath: string,
+  slideId: string,
+): TextRunIR[] {
+  const runs: TextRunIR[] = [];
+  for (const node of nodes) {
+    switch (node.type) {
+      case "text":
+        runs.push(createRun(node.value ?? "", marks));
+        break;
+      case "strong":
+        runs.push(
+          ...inlineRuns(
+            node.children ?? [],
+            { ...marks, bold: true },
+            diagnostics,
+            sourcePath,
+            slideId,
+          ),
+        );
+        break;
+      case "emphasis":
+        runs.push(
+          ...inlineRuns(
+            node.children ?? [],
+            { ...marks, italic: true },
+            diagnostics,
+            sourcePath,
+            slideId,
+          ),
+        );
+        break;
+      case "link":
+        runs.push(
+          ...inlineRuns(
+            node.children ?? [],
+            { ...marks, href: node.url },
+            diagnostics,
+            sourcePath,
+            slideId,
+          ),
+        );
+        break;
+      case "inlineCode":
+        runs.push(
+          createRun(node.value ?? "", {
+            ...marks,
+            fontFace: "Noto Sans Mono",
+          }),
+        );
+        break;
+      case "break":
+        runs.push(createRun("\n", marks));
+        break;
+      default:
+        diagnostics.push(
+          createDiagnostic({
+            severity: "error",
+            code: "MARKDOWN_INLINE_UNSUPPORTED",
+            message: `Unsupported inline Markdown node: ${node.type}`,
+            sourceLocation: sourceLocationForNode(node, sourcePath),
+            slideId,
+          }),
+        );
+    }
+  }
+  return runs;
+}
+
+function paragraphFromNode(
+  node: AstNode,
+  diagnostics: Diagnostic[],
+  sourcePath: string,
+  slideId: string,
+  options: {
+    bold?: boolean;
+    level?: number;
+    bullet?: boolean;
+    ordered?: boolean;
+  } = {},
+): ParagraphIR {
+  const paragraph: ParagraphIR = {
+    runs: inlineRuns(
+      node.children ?? [],
+      options.bold ? { bold: true } : {},
+      diagnostics,
+      sourcePath,
+      slideId,
+    ),
+  };
+  if (options.level !== undefined) {
+    paragraph.level = options.level;
+  }
+  if (options.bullet !== undefined) {
+    paragraph.bullet = options.bullet;
+  }
+  if (options.ordered !== undefined) {
+    paragraph.ordered = options.ordered;
+  }
+  return paragraph;
+}
+
+function listParagraphs(
+  node: AstNode,
+  diagnostics: Diagnostic[],
+  sourcePath: string,
+  slideId: string,
+  level: number,
+): ParagraphIR[] {
+  const paragraphs: ParagraphIR[] = [];
+  for (const item of node.children ?? []) {
+    for (const child of item.children ?? []) {
+      if (child.type === "paragraph") {
+        paragraphs.push(
+          paragraphFromNode(child, diagnostics, sourcePath, slideId, {
+            level,
+            bullet: true,
+            ordered: node.ordered === true,
+          }),
+        );
+      } else if (child.type === "list") {
+        paragraphs.push(
+          ...listParagraphs(child, diagnostics, sourcePath, slideId, level + 1),
+        );
+      } else {
+        diagnostics.push(
+          createDiagnostic({
+            severity: "error",
+            code: "MARKDOWN_LIST_CONTENT_UNSUPPORTED",
+            message: `Unsupported list content: ${child.type}`,
+            sourceLocation: sourceLocationForNode(child, sourcePath),
+            slideId,
+          }),
+        );
+      }
+    }
+  }
+  return paragraphs;
+}
+
+export interface MarkdownConversion {
+  paragraphs: ParagraphIR[];
+  diagnostics: Diagnostic[];
+}
+
+export function markdownNodesToParagraphs(
+  nodes: AstNode[],
+  sourcePath: string,
+  slideId: string,
+): MarkdownConversion {
+  const paragraphs: ParagraphIR[] = [];
+  const diagnostics: Diagnostic[] = [];
+
+  for (const node of nodes) {
+    switch (node.type) {
+      case "paragraph":
+        paragraphs.push(paragraphFromNode(node, diagnostics, sourcePath, slideId));
+        break;
+      case "heading":
+        paragraphs.push(
+          paragraphFromNode(node, diagnostics, sourcePath, slideId, {
+            bold: true,
+          }),
+        );
+        break;
+      case "list":
+        paragraphs.push(...listParagraphs(node, diagnostics, sourcePath, slideId, 0));
+        break;
+      case "code":
+        paragraphs.push({
+          runs: [
+            {
+              text: node.value ?? "",
+              fontFace: "Noto Sans Mono",
+            },
+          ],
+        });
+        break;
+      default:
+        diagnostics.push(
+          createDiagnostic({
+            severity: "error",
+            code: "MARKDOWN_BLOCK_UNSUPPORTED",
+            message: `Unsupported Markdown block: ${node.type}`,
+            sourceLocation: sourceLocationForNode(node, sourcePath),
+            slideId,
+          }),
+        );
+    }
+  }
+
+  return { paragraphs, diagnostics };
+}
+
+export function markdownToPlainText(markdown: string): string {
+  if (markdown.trim() === "") {
+    return "";
+  }
+  const tree = unified().use(remarkParse).parse(markdown);
+  return mdastToString(tree).trim();
+}

@@ -1,0 +1,32 @@
+export { PptxRenderError, StrictEditableError } from "./errors.js";
+export {
+  logicalFontSizeToPoints,
+  logicalFrameToInches,
+  objectName,
+  renderPptx,
+  writePptxFile,
+} from "./renderer.js";
+export type {
+  ChartElementIR,
+  ChartSeriesIR,
+  DeckIRInput,
+  ElementBaseIR,
+  ElementIR,
+  FillIR,
+  FrameIR,
+  GroupElementIR,
+  ImageElementIR,
+  LineElementIR,
+  ParagraphIR,
+  RenderedPptx,
+  RendererDiagnostic,
+  RenderPptxOptions,
+  ShapeElementIR,
+  SourceIR,
+  StrokeIR,
+  TableCellIR,
+  TableElementIR,
+  TextElementIR,
+  TextRunIR,
+  TextStyleIR,
+} from "./types.js";

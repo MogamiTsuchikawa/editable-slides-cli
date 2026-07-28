@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "slides": {
+    "adoption-chart": {
+      "adoption-chart-main": {
+        "x": 720,
+        "y": 260,
+        "w": 1050,
+        "h": 620,
+        "rotation": 0,
+        "zIndex": 20
+      }
+    }
+  }
+}

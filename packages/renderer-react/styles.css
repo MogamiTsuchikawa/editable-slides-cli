@@ -1,0 +1,239 @@
+:root {
+  --lt-slide-shadow: 0 24px 70px rgb(15 23 42 / 18%);
+  --lt-selection: #2563eb;
+  --lt-safe-area: rgb(14 165 233 / 65%);
+  --lt-debug: #f97316;
+}
+
+.lt-slide-viewport {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+  overflow: hidden;
+}
+
+.lt-slide-stage {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  flex: none;
+  transform-origin: top left;
+  will-change: transform;
+}
+
+.lt-slide-canvas {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  color: var(--lt-color-text, #172033);
+  background: var(--lt-color-background, #fff);
+  box-shadow: var(--lt-slide-shadow);
+  isolation: isolate;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+}
+
+.lt-slide-canvas[data-mode="print"] {
+  box-shadow: none;
+}
+
+.lt-slide-element {
+  position: absolute;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  transform-origin: center center;
+}
+
+.lt-slide-element[data-selected="true"]::after {
+  position: absolute;
+  z-index: 2147483646;
+  inset: -3px;
+  border: 3px solid var(--lt-selection);
+  border-radius: 3px;
+  content: "";
+  pointer-events: none;
+}
+
+.lt-slide-element[data-locked="true"]::after {
+  border-style: dashed;
+}
+
+.lt-text-element {
+  display: flex;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.lt-text-element[data-vertical-align="top"] {
+  align-items: flex-start;
+}
+
+.lt-text-element[data-vertical-align="middle"] {
+  align-items: center;
+}
+
+.lt-text-element[data-vertical-align="bottom"] {
+  align-items: flex-end;
+}
+
+.lt-text-content {
+  width: 100%;
+}
+
+.lt-text-content p {
+  margin: 0;
+  padding: 0;
+}
+
+.lt-text-content p + p {
+  margin-top: 0.22em;
+}
+
+.lt-image-element img,
+.lt-icon-element img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.lt-shape-element {
+  overflow: hidden;
+}
+
+.lt-line-element svg,
+.lt-chart-element svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.lt-table-element {
+  overflow: hidden;
+}
+
+.lt-table-element table {
+  width: 100%;
+  height: 100%;
+  border-spacing: 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.lt-table-element th,
+.lt-table-element td {
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 12px 16px;
+  border: var(--lt-table-border-width, 1px) solid var(--lt-table-border, #cbd5e1);
+  vertical-align: middle;
+}
+
+.lt-table-element p {
+  margin: 0;
+}
+
+.lt-debug-frame {
+  position: absolute;
+  z-index: 2147483645;
+  inset: 0;
+  border: 2px solid var(--lt-debug);
+  pointer-events: none;
+}
+
+.lt-debug-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 100%;
+  padding: 3px 7px;
+  overflow: hidden;
+  color: white;
+  background: var(--lt-debug);
+  font:
+    600 14px / 1.2 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lt-safe-area {
+  position: absolute;
+  z-index: 2147483644;
+  border: 2px dashed var(--lt-safe-area);
+  pointer-events: none;
+}
+
+.lt-slide-overflow {
+  outline: 4px solid #dc2626 !important;
+  outline-offset: -4px;
+}
+
+.lt-print-deck {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+
+.lt-print-page {
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  break-after: page;
+  page-break-after: always;
+}
+
+.lt-print-scaler {
+  width: 1920px;
+  height: 1080px;
+  transform: scale(0.6666666667);
+  transform-origin: top left;
+}
+
+.lt-print-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+@media print {
+  @page {
+    size: 13.333333in 7.5in;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 13.333333in;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .lt-print-page {
+    width: 13.333333in !important;
+    height: 7.5in !important;
+  }
+
+  .lt-slide-canvas {
+    width: 1920px !important;
+    height: 1080px !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .lt-debug-frame,
+  .lt-debug-label,
+  .lt-safe-area {
+    display: none !important;
+  }
+}

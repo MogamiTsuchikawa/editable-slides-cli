@@ -1,0 +1,9 @@
+schemaVersion: 1
+id: fixture-minimal
+title: Minimal compiler fixture
+theme: default
+canvas: wide
+language: ja-JP
+strictEditable: true
+slides:
+  - slides/001-minimal.mdx
