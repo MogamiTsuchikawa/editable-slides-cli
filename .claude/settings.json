@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(mise trust)",
+      "Bash(mise run setup)",
+      "Bash(mise run doctor)",
+      "Bash(mise run qa)",
+      "Bash(mise run test:visual)",
+      "Bash(mise exec -- npm run slide -- new *)",
+      "Bash(mise exec -- npm run slide -- dev *)",
+      "Bash(mise exec -- npm run slide -- lint *)",
+      "Bash(mise exec -- npm run slide -- export *)",
+      "Bash(mise exec -- npm run slide -- snapshot *)",
+      "Bash(mise exec -- npm run slide -- release *)",
+      "Bash(mise exec -- npm run slide -- inspect *)",
+      "Bash(mise exec -- npm run slide -- doctor)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log)",
+      "Bash(git log *)"
+    ]
+  }
+}

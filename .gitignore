@@ -21,6 +21,10 @@ tmp/
 *.log
 npm-debug.log*
 
+# User-provided source materials
+materials/*
+!materials/README.md
+
 # Local mise overrides
 .mise.local.toml
 mise.local.toml

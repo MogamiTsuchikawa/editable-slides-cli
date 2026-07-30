@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
-import { access, mkdir, readdir, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
@@ -15,6 +15,7 @@ import { assertPptx, inspectPptx } from "@livetoon/slide-qa-pptx";
 import { writePptxFile } from "@livetoon/slide-renderer-pptx";
 import chokidar from "chokidar";
 import { chromium } from "playwright";
+import { parse as parseYaml } from "yaml";
 
 import {
   atomicWriteText,
@@ -62,32 +63,7 @@ export async function lintCommand(
     const artifact = await compileArtifact(deckDirectory, {
       failOnWarnings: options.failOnWarnings,
     });
-    emitDiagnostics(artifact.diagnostics, io);
-    if (options.strictEditable) {
-      const nonEditable: string[] = [];
-      const visit = (
-        slideId: string,
-        elements: (typeof artifact.deck.slides)[number]["elements"],
-      ) => {
-        for (const element of elements) {
-          if (element.editable === false || element.fallbackReason) {
-            nonEditable.push(`${slideId}/${element.id}`);
-          }
-          if (element.type === "group") {
-            visit(slideId, element.children);
-          }
-        }
-      };
-      for (const slide of artifact.deck.slides) {
-        visit(slide.id, slide.elements);
-      }
-      if (nonEditable.length > 0) {
-        throw new Error(`Strict editable check failed: ${nonEditable.join(", ")}`);
-      }
-    }
-    io.out(
-      `OK ${artifact.deck.metadata.id}: ${artifact.deck.slides.length} slides, ${artifact.diagnostics.length} diagnostics`,
-    );
+    assertArtifactLint(artifact, options, io);
   } catch (error) {
     if (error instanceof DeckCompileError) {
       for (const diagnostic of error.diagnostics) {
@@ -98,15 +74,104 @@ export async function lintCommand(
   }
 }
 
-function sampleDeckFiles(theme: string): Record<string, string> {
+const deckIdPattern = /^[a-z0-9][a-z0-9_-]*$/;
+
+function assertArtifactLint(
+  artifact: CompiledArtifact,
+  options: { strictEditable?: boolean },
+  io: CommandIO,
+): void {
+  emitDiagnostics(artifact.diagnostics, io);
+  if (options.strictEditable) {
+    const nonEditable: string[] = [];
+    const visit = (
+      slideId: string,
+      elements: (typeof artifact.deck.slides)[number]["elements"],
+    ) => {
+      for (const element of elements) {
+        if (element.editable === false || element.fallbackReason) {
+          nonEditable.push(`${slideId}/${element.id}`);
+        }
+        if (element.type === "group") {
+          visit(slideId, element.children);
+        }
+      }
+    };
+    for (const slide of artifact.deck.slides) {
+      visit(slide.id, slide.elements);
+    }
+    if (nonEditable.length > 0) {
+      throw new Error(`Strict editable check failed: ${nonEditable.join(", ")}`);
+    }
+  }
+  io.out(
+    `OK ${artifact.deck.metadata.id}: ${artifact.deck.slides.length} slides, ${artifact.diagnostics.length} diagnostics`,
+  );
+}
+
+function mdxPlainText(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("{", "&#123;")
+    .replaceAll("}", "&#125;");
+}
+
+function readFrontmatterId(source: string): string | undefined {
+  const match = source.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!match?.[1]) {
+    return undefined;
+  }
+  try {
+    const parsed = parseYaml(match[1]) as { id?: unknown } | undefined;
+    return typeof parsed?.id === "string" ? parsed.id : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function findDeckIdOwner(
+  id: string,
+  targetDirectory: string,
+): Promise<string | undefined> {
+  const decksDirectory = path.join(repositoryRoot, "decks");
+  const entries = await readdir(decksDirectory, { withFileTypes: true }).catch(
+    () => [],
+  );
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+    const candidateDirectory = path.join(decksDirectory, entry.name);
+    if (path.resolve(candidateDirectory) === path.resolve(targetDirectory)) {
+      continue;
+    }
+    const source = await readFile(
+      path.join(candidateDirectory, "deck.mdx"),
+      "utf8",
+    ).catch(() => undefined);
+    if (source && readFrontmatterId(source) === id) {
+      return candidateDirectory;
+    }
+  }
+  return undefined;
+}
+
+function sampleDeckFiles(
+  theme: string,
+  id: string,
+  title: string,
+): Record<string, string> {
+  const heading = mdxPlainText(title);
   return {
     "deck.mdx": `---
 schemaVersion: 1
-id: example
-title: Example Deck
+id: ${id}
+title: ${JSON.stringify(title)}
 author: Livetoon
 company: Livetoon
-theme: ${theme}
+theme: ${JSON.stringify(theme)}
 canvas: wide
 language: ja-JP
 strictEditable: true
@@ -126,9 +191,9 @@ slides:
 
 <Slide id="cover">
 
-# Example Deck
+# ${heading}
 
-Markdownから編集可能なスライドを生成
+伝えたい内容から、編集可能なスライドを生成
 
 </Slide>
 
@@ -152,16 +217,39 @@ Markdownから編集可能なスライドを生成
 
 export async function newCommand(
   target: string,
-  options: { theme?: string },
+  options: { theme?: string; id?: string; title?: string },
   io: CommandIO = consoleIO,
 ): Promise<void> {
   const directory = path.resolve(target);
+  const id = options.id === undefined ? path.basename(directory) : options.id.trim();
+  if (!deckIdPattern.test(id)) {
+    throw new Error(
+      `Deck id must start with a lowercase letter or number and contain only a-z, 0-9, _ or -. Example: --id sales-kickoff (received: ${id || "empty"})`,
+    );
+  }
+  const owner = await findDeckIdOwner(id, directory);
+  if (owner) {
+    throw new Error(
+      `Deck id "${id}" is already used by ${owner}. Choose another English slug with --id.`,
+    );
+  }
+  const title =
+    options.title === undefined
+      ? id.replaceAll(/[-_]+/g, " ")
+      : options.title.trim().replaceAll(/\s+/g, " ");
+  if (!title) {
+    throw new Error("Deck title must not be empty");
+  }
+  const theme = options.theme === undefined ? "company" : options.theme.trim();
+  if (!theme) {
+    throw new Error("Theme must not be empty");
+  }
   await mkdir(directory, { recursive: true });
   const existing = await readdir(directory);
   if (existing.length > 0) {
     throw new Error(`Target directory is not empty: ${directory}`);
   }
-  const files = sampleDeckFiles(options.theme ?? "company");
+  const files = sampleDeckFiles(theme, id, title);
   for (const [relativePath, contents] of Object.entries(files)) {
     const filePath = path.join(directory, relativePath);
     await mkdir(path.dirname(filePath), { recursive: true });
@@ -171,7 +259,7 @@ export async function newCommand(
     mkdir(path.join(directory, "assets")),
     mkdir(path.join(directory, "data")),
   ]);
-  io.out(`Created ${directory}`);
+  io.out(`Created ${directory} (${id}: ${title})`);
 }
 
 function parseFormats(value: string): Set<"pptx" | "pdf"> {
@@ -270,8 +358,20 @@ export async function exportCommand(
   },
   io: CommandIO = consoleIO,
 ): Promise<void> {
-  const formats = parseFormats(options.format ?? "pptx,pdf");
   const artifact = await compileArtifact(deckDirectory);
+  await exportArtifact(artifact, options, io);
+}
+
+async function exportArtifact(
+  artifact: CompiledArtifact,
+  options: {
+    format?: string;
+    strictEditable?: boolean;
+    port?: number;
+  },
+  io: CommandIO,
+): Promise<void> {
+  const formats = parseFormats(options.format ?? "pptx,pdf");
   emitDiagnostics(artifact.diagnostics, io);
   const outputs: Record<string, unknown> = {};
 
@@ -338,6 +438,14 @@ export async function snapshotCommand(
   io: CommandIO = consoleIO,
 ): Promise<void> {
   const artifact = await compileArtifact(deckDirectory);
+  await snapshotArtifact(artifact, options, io);
+}
+
+async function snapshotArtifact(
+  artifact: CompiledArtifact,
+  options: { port?: number },
+  io: CommandIO,
+): Promise<void> {
   const studio = await startStudio(artifact, { port: options.port });
   const executablePath = detectChromiumExecutable();
   const browser = await chromium.launch({
@@ -364,19 +472,119 @@ export async function snapshotCommand(
       );
     }
     const outputDirectory = path.join(artifact.outputDirectory, "slides");
+    await rm(outputDirectory, { recursive: true, force: true });
     await mkdir(outputDirectory, { recursive: true });
+    const outputPaths: string[] = [];
     for (let index = 0; index < count; index += 1) {
       const outputPath = path.join(
         outputDirectory,
         `${String(index + 1).padStart(3, "0")}.png`,
       );
       await pages.nth(index).screenshot({ path: outputPath });
+      outputPaths.push(outputPath);
       io.out(`Snapshot ${outputPath}`);
+    }
+    const overviewPage = await browser.newPage({
+      viewport: { width: 1920, height: 300 },
+      deviceScaleFactor: 1,
+    });
+    try {
+      const thumbnails = await Promise.all(
+        outputPaths.map(async (outputPath, index) => ({
+          number: index + 1,
+          source: `data:image/png;base64,${(await readFile(outputPath)).toString(
+            "base64",
+          )}`,
+        })),
+      );
+      await overviewPage.setContent(`<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: #e9edf2; }
+      body {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 24px;
+        padding: 24px;
+        font-family: Arial, sans-serif;
+      }
+      figure { margin: 0; min-width: 0; }
+      img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid #c8ced7;
+        box-shadow: 0 4px 14px rgb(15 23 42 / 12%);
+      }
+      figcaption {
+        padding-top: 8px;
+        color: #475569;
+        font-size: 20px;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    ${thumbnails
+      .map(
+        ({ number, source }) =>
+          `<figure><img src="${source}" alt="Slide ${number}" /><figcaption>${number}</figcaption></figure>`,
+      )
+      .join("\n")}
+  </body>
+</html>`);
+      await overviewPage.evaluate(async () => {
+        await Promise.all(
+          [...document.images].map((image) =>
+            image.complete ? Promise.resolve() : image.decode(),
+          ),
+        );
+      });
+      const overviewPath = path.join(outputDirectory, "000-overview.png");
+      await overviewPage.screenshot({ path: overviewPath, fullPage: true });
+      io.out(`Overview ${overviewPath}`);
+    } finally {
+      await overviewPage.close();
     }
   } finally {
     await browser.close();
     await studio.stop();
   }
+}
+
+export async function releaseCommand(
+  deckDirectory: string,
+  options: { format?: string; port?: number },
+  io: CommandIO = consoleIO,
+): Promise<void> {
+  const format = options.format ?? "pptx,pdf";
+  parseFormats(format);
+  let artifact: CompiledArtifact;
+  try {
+    artifact = await compileArtifact(deckDirectory, { failOnWarnings: true });
+    assertArtifactLint(artifact, { strictEditable: true }, io);
+  } catch (error) {
+    if (error instanceof DeckCompileError) {
+      for (const diagnostic of error.diagnostics) {
+        io.error(formatDiagnostic(diagnostic));
+      }
+    }
+    throw error;
+  }
+  await snapshotArtifact(artifact, { port: options.port }, io);
+  await exportArtifact(
+    artifact,
+    {
+      format,
+      strictEditable: true,
+      port: options.port,
+    },
+    io,
+  );
+  io.out(`Release complete: ${artifact.outputDirectory}`);
 }
 
 export async function inspectCommand(

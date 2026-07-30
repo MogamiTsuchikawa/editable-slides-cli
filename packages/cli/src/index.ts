@@ -9,17 +9,19 @@ import {
   inspectCommand,
   lintCommand,
   newCommand,
+  releaseCommand,
   snapshotCommand,
 } from "./commands.js";
 
 const HELP = `Livetoon Slide
 
 Usage:
-  slide new <deck-dir> [--theme <path>]
+  slide new <deck-dir> [--id <id>] [--title <title>] [--theme <path>]
   slide dev <deck-dir> [--open] [--port <number>]
   slide lint <deck-dir> [--strict-editable] [--fail-on-warnings]
   slide export <deck-dir> [--format pptx,pdf] [--port <number>]
   slide snapshot <deck-dir> [--port <number>]
+  slide release <deck-dir> [--format pptx,pdf] [--port <number>]
   slide inspect <deck-dir> [--slide <id>] [--pptx <path>]
   slide doctor
 `;
@@ -56,10 +58,14 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         args: rest,
         allowPositionals: true,
         options: {
+          id: { type: "string" },
+          title: { type: "string" },
           theme: { type: "string" },
         },
       });
       await newCommand(requiredPosition(parsed.positionals, 0, "deck directory"), {
+        id: parsed.values.id,
+        title: parsed.values.title,
         theme: parsed.values.theme,
       });
       break;
@@ -120,6 +126,21 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         },
       });
       await snapshotCommand(requiredPosition(parsed.positionals, 0, "deck directory"), {
+        port: numberOption(parsed.values.port, "--port"),
+      });
+      break;
+    }
+    case "release": {
+      const parsed = parseArgs({
+        args: rest,
+        allowPositionals: true,
+        options: {
+          format: { type: "string", default: "pptx,pdf" },
+          port: { type: "string" },
+        },
+      });
+      await releaseCommand(requiredPosition(parsed.positionals, 0, "deck directory"), {
+        format: parsed.values.format,
         port: numberOption(parsed.values.port, "--port"),
       });
       break;

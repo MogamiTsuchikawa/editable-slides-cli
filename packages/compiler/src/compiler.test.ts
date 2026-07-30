@@ -297,7 +297,6 @@ describe("compileDeck", () => {
     expect(summary?.notes.sources).toEqual([
       {
         label: "社内AI活用調査 2026",
-        url: "https://example.com/research",
       },
     ]);
     const image = summary?.elements.find((element) => element.type === "image");

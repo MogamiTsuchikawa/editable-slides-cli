@@ -18,8 +18,9 @@ Phase 0〜6.1の実装は完了しており、現在は社内パイロットへ�
 | PPTX | Text、Image、Shape、Line、Connector、Table、Chart、ノートをネイティブOOXMLとして出力 | 10スライド、10ノート、37 / 37オブジェクトがネイティブ編集可能。macOS PowerPointで修復なしに開き、編集・保存・再オープンを確認 |
 | PDF / CLI | `new`、`dev`、`lint`、`export`、`snapshot`、`inspect`、`doctor`、PDF構造検査、build manifest | PDF 10ページ、本文69件、フォント2系統を検査。対象フォントは埋め込み済みかつUnicode map付き |
 | Livetoonテーマ | 提供PPTXからブランド素材、配色、游ゴシック／Arial、8マスター、15レイアウト、AI向けauthoring設定を再現 | 11ページのテーマ見本をPPTX/PDFへ出力。45 / 45オブジェクトがネイティブ編集可能、11ノート、PPTXはみ出し0件、PDF本文96件・フォント2系統を検査 |
+| AIオンボーディング | `AGENTS.md`、`CLAUDE.md`、共通playbook、非技術者向け入口、資料投入口、一括`release`、固有ID付き`new` | 新規deckの実コンパイルと、会社テーマ11ページの単一DeckIRからの一覧 / 個別PNG / PPTX / PDF生成が成功。PPTX 45 / 45オブジェクト、PDF 11ページを検査 |
 
-Phase 7で残る作業は、利用者向けドキュメント、`corporate-golden`、2〜3件の社内パイロット、Windows PowerPoint自動検査のnightly運用である。
+Phase 7で残る作業は、詳細なcomponent API / troubleshooting、`corporate-golden`、2〜3件の社内パイロット、Windows PowerPoint自動検査のnightly運用である。
 
 ## 1. 目的
 
@@ -216,7 +217,6 @@ slides:
       全社導入より業務単位で始める理由を説明する。
     sources:
       - label: 社内AI活用調査 2026
-        url: https://example.com/research
 ---
 
 <Slide id="ai-adoption-cover">

@@ -1,35 +1,54 @@
 # Livetoon Slide
 
-`deck.mdx` 1ファイルを正本として、ブラウザ上の編集、編集可能なPPTX、PDFを同じDeckIRから生成するスライド制作基盤です。発表者原稿もMDXに保持し、PPTXのノートへ出力します。
+`deck.mdx` 1ファイルを内容と発表者原稿の正本として、ブラウザ上の編集、編集可能なPPTX、PDFを同じDeckIRから生成するスライド制作基盤です。Studioで手動調整した位置とサイズだけは、補助ファイルの`layout.overrides.json`へ保存します。
 
-## セットアップ
+## AIで使う（おすすめ）
+
+このリポジトリをCodexまたはClaude Codeで開き、作りたい資料を普通の日本語で
+伝えてください。
+
+> 営業部の新人向けに、生成AIを安全に使う方法を説明するスライドを作って。
+
+AIは初回準備、構成、Livetoonテーマでの制作、発表者原稿、全ページの見た目確認、
+編集可能なPPTXとPDFの出力まで行います。レイアウト、フォント、保存形式などを
+利用者へ質問しない運用ルールを`AGENTS.md`、`CLAUDE.md`、
+`AI_PLAYBOOK.md`に用意しています。
+
+入力資料はチャットへ添付するか、`materials/`へ置いてファイル名を伝えます。
+コピーして使える依頼例は[`START_HERE.md`](./START_HERE.md)にあります。
+
+## 手動セットアップ
 
 前提は[mise](https://mise.jdx.dev/) 2026.3.10以降だけです。
 
 ```bash
 mise trust
 mise run setup
-mise run doctor
 ```
 
 `mise run setup`はNode.js 24.0.1、npm 11.3.0、npm依存、Playwright Chromium、Poppler 26.07.0を準備します。Popplerはmise配下へ隔離されるため、HomebrewのXpdfを`brew unlink`する必要はありません。普段のコマンドは`mise run ...`経由で実行してください。
 
-## 基本操作
+準備済み環境を後から再確認するときだけ`mise run doctor`を実行します。
+
+## サンプルと基盤の手動操作
 
 ```bash
-mise run dev          # Studioを開く
+mise run dev          # exampleをStudioで開く
 mise run export       # exampleをPPTXとPDFへ出力
 mise run qa           # lint・型検査・テスト
 mise run test:visual  # Web視覚回帰
 ```
 
-個別のCLIコマンドは、miseをactivateしたシェルで実行できます。
+新しい資料は固有の英小文字名と表示タイトルを指定して作成します。
+`release`は警告検査、全体一覧と全ページ画像、編集可能PPTX、
+PDFの出力をまとめて行います。
 
 ```bash
-eval "$(mise activate zsh)"
-npm run slide -- new decks/my-deck --theme company
-npm run slide -- dev decks/my-deck --open
-npm run slide -- export decks/my-deck --format pptx,pdf
+mise exec -- npm run slide -- new decks/my-deck \
+  --title "資料タイトル" \
+  --theme company
+mise exec -- npm run slide -- dev decks/my-deck --open
+mise exec -- npm run slide -- release decks/my-deck
 ```
 
 ## Livetoonテーマ
@@ -60,8 +79,8 @@ AIが資料を作るときの判断基準は、[`companyTheme.authoring`](./them
 再現サンプルは[`decks/livetoon-theme/deck.mdx`](./decks/livetoon-theme/deck.mdx)です。
 
 ```bash
-npm run slide -- dev decks/livetoon-theme --open
-npm run slide -- export decks/livetoon-theme --format pptx,pdf
+mise exec -- npm run slide -- dev decks/livetoon-theme --open
+mise exec -- npm run slide -- release decks/livetoon-theme
 ```
 
 ## `deck.mdx`
