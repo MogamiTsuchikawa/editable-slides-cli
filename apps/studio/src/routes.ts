@@ -1,5 +1,6 @@
 export type StudioRoute =
   | { kind: "edit"; deckId: string; slideId?: string }
+  | { kind: "presenter"; deckId: string; slideId?: string }
   | { kind: "print"; deckId: string };
 
 function decode(segment: string | undefined): string | undefined {
@@ -25,8 +26,9 @@ export function parseStudioRoute(pathname: string, search = ""): StudioRoute {
     case "deck":
     case "debug":
       return slideId ? { kind: "edit", deckId, slideId } : { kind: "edit", deckId };
-    case "overview":
     case "presenter":
+      return slideId ? { kind, deckId, slideId } : { kind, deckId };
+    case "overview":
       return { kind: "edit", deckId };
     default:
       return slideId ? { kind: "edit", deckId, slideId } : { kind: "edit", deckId };
@@ -39,6 +41,7 @@ export function routePath(route: StudioRoute): string {
     case "print":
       return `/${route.kind}/${deckId}`;
     case "edit":
+    case "presenter":
       return `/${route.kind}/${deckId}${
         route.slideId ? `/${encodeURIComponent(route.slideId)}` : ""
       }`;

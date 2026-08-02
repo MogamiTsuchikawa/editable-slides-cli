@@ -7,7 +7,9 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EditorView } from "./editor.js";
 import type { OverrideDocument } from "./overrides.js";
+import { PresenterView } from "./presenter.js";
 import { parseStudioRoute, routePath, type StudioRoute } from "./routes.js";
+import { SlideActions } from "./slide-actions.js";
 import { useDeckData } from "./use-deck-data.js";
 
 interface SyncMessage {
@@ -21,8 +23,12 @@ function clampSlide(index: number, deck: DeckIR): number {
   return Math.max(0, Math.min(deck.slides.length - 1, index));
 }
 
-function slideRoute(deckId: string, slide: SlideIR): StudioRoute {
-  return { kind: "edit", deckId, slideId: slide.id };
+function slideRoute(
+  kind: "edit" | "presenter",
+  deckId: string,
+  slide: SlideIR,
+): StudioRoute {
+  return { kind, deckId, slideId: slide.id };
 }
 
 function ViewportSlide({
@@ -68,6 +74,7 @@ function Toolbar({
   index,
   next,
   previous,
+  openPresenter,
   toggleDebug,
 }: {
   deck: DeckIR;
@@ -75,6 +82,7 @@ function Toolbar({
   index: number;
   next: () => void;
   previous: () => void;
+  openPresenter: () => void;
   toggleDebug: () => void;
 }) {
   return (
@@ -120,6 +128,15 @@ function Toolbar({
         </DeckReadiness>
         <span className="studio-toolbar-divider" aria-hidden="true" />
         <button
+          aria-label="発表者画面を開く"
+          className="studio-presenter-button"
+          onClick={openPresenter}
+          title="発表者画面を別ウィンドウで開く"
+          type="button"
+        >
+          ▶
+        </button>
+        <button
           aria-controls="studio-debug-drawer"
           aria-expanded={debugOpen}
           aria-label={debugOpen ? "デバッグを閉じる" : "デバッグを表示"}
@@ -140,17 +157,22 @@ function ThumbnailRail({
   activeIndex,
   openSlide,
   overrides,
+  actions,
 }: {
   deck: DeckIR;
   activeIndex: number;
   openSlide: (index: number) => void;
   overrides: OverrideDocument;
+  actions?: React.ReactNode;
 }) {
   return (
     <aside className="studio-thumbnail-rail">
       <div className="studio-thumbnail-head">
-        <strong>Slides</strong>
-        <span>{deck.slides.length}</span>
+        <div>
+          <strong>ページ</strong>
+          <span>{deck.slides.length}</span>
+        </div>
+        {actions}
       </div>
       <nav aria-label="スライド一覧" className="studio-thumbnail-list">
         {deck.slides.map((slide, index) => (
@@ -324,6 +346,7 @@ export function App() {
   const routeRef = useRef(route);
   const [activeIndex, setActiveIndex] = useState(0);
   const [debugOpen, setDebugOpen] = useState(false);
+  const pendingSlideId = useRef<string | undefined>(undefined);
   const sender = useRef(crypto.randomUUID());
   const channel = useRef<BroadcastChannel | undefined>(undefined);
   const data = useDeckData(route.deckId);
@@ -359,7 +382,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!data.deck || route.kind !== "edit" || !route.slideId) return;
+    if (!data.deck || route.kind === "print" || !route.slideId) return;
     const index = data.deck.slides.findIndex((slide) => slide.id === route.slideId);
     if (index >= 0) setActiveIndex(index);
   }, [data.deck, route]);
@@ -385,9 +408,13 @@ export function App() {
       if (index < 0) return;
       setActiveIndex(index);
       const currentRoute = routeRef.current;
-      if (currentRoute.kind === "edit") {
+      if (currentRoute.kind === "edit" || currentRoute.kind === "presenter") {
         visit(
-          slideRoute(currentRoute.deckId, currentDeck.slides[index] as SlideIR),
+          slideRoute(
+            currentRoute.kind,
+            currentRoute.deckId,
+            currentDeck.slides[index] as SlideIR,
+          ),
           true,
         );
       }
@@ -407,8 +434,8 @@ export function App() {
       if (!slide) return;
       setActiveIndex(index);
       const currentRoute = routeRef.current;
-      if (currentRoute.kind === "edit") {
-        visit(slideRoute(currentRoute.deckId, slide), true);
+      if (currentRoute.kind === "edit" || currentRoute.kind === "presenter") {
+        visit(slideRoute(currentRoute.kind, currentRoute.deckId, slide), true);
       }
       if (publish) {
         channel.current?.postMessage({
@@ -421,6 +448,17 @@ export function App() {
     },
     [data.deck, visit],
   );
+
+  useEffect(() => {
+    const selectedSlideId = pendingSlideId.current;
+    if (!selectedSlideId || !data.deck) return;
+    const index = data.deck.slides.findIndex(
+      (candidate) => candidate.id === selectedSlideId,
+    );
+    if (index < 0) return;
+    pendingSlideId.current = undefined;
+    goToSlide(index);
+  }, [data.deck, goToSlide]);
 
   if (data.loading && !data.deck) {
     return (
@@ -466,6 +504,19 @@ export function App() {
     );
   }
 
+  if (route.kind === "presenter") {
+    return (
+      <PresenterView
+        deck={deck}
+        index={safeIndex}
+        next={next}
+        openEditor={() => visit(slideRoute("edit", deck.metadata.id, slide))}
+        overrides={data.overrides}
+        previous={previous}
+      />
+    );
+  }
+
   return (
     <div className="studio-app" data-route="edit">
       <Toolbar
@@ -473,6 +524,13 @@ export function App() {
         deck={deck}
         index={safeIndex}
         next={next}
+        openPresenter={() =>
+          window.open(
+            routePath(slideRoute("presenter", deck.metadata.id, slide)),
+            "_blank",
+            "noopener,noreferrer",
+          )
+        }
         previous={previous}
         toggleDebug={() => setDebugOpen((open) => !open)}
       />
@@ -487,14 +545,39 @@ export function App() {
           deck={deck}
           openSlide={goToSlide}
           overrides={data.overrides}
+          actions={
+            <SlideActions
+              deckId={deck.metadata.id}
+              index={safeIndex}
+              onMutated={(result) => {
+                pendingSlideId.current = result.selectedSlideId;
+                data.setSourceState(result);
+                window.setTimeout(() => {
+                  void Promise.all([data.reloadDeck(), data.reloadSourceState()]);
+                }, 250);
+              }}
+              slide={slide}
+              slideCount={deck.slides.length}
+              sourceState={data.sourceState}
+            />
+          }
         />
         <div className="studio-workbench-main">
           <EditorView
             deck={deck}
             initialDocument={data.overrides}
             onDocumentSaved={data.setOverrides}
-            onTextSaved={() => void data.reloadDeck()}
+            onSourceChanged={(state) => {
+              data.setSourceState(state);
+              window.setTimeout(() => {
+                void Promise.all([data.reloadDeck(), data.reloadSourceState()]);
+              }, 250);
+            }}
+            onTextSaved={() =>
+              void Promise.all([data.reloadDeck(), data.reloadSourceState()])
+            }
             slide={slide}
+            sourceState={data.sourceState}
           />
         </div>
       </div>

@@ -45,6 +45,17 @@ export interface NoFillIR {
 
 export type FillIR = SolidFillIR | NoFillIR;
 
+export interface ImageBackgroundIR {
+  type: "image";
+  src: string;
+  contentHash?: string;
+  mimeType?: string;
+  fit: "stretch" | "contain" | "cover";
+  focalPosition?: FocalPositionIR;
+}
+
+export type BackgroundIR = FillIR | ImageBackgroundIR;
+
 export interface StrokeIR {
   color: string;
   width: number;
@@ -98,6 +109,8 @@ export interface ElementBase {
   editable?: boolean;
   fallbackReason?: string;
   alt?: string;
+  /** Explicitly excludes a visual-only object from assistive reading order. */
+  decorative?: boolean;
   sourceLocation: SourceLocation;
 }
 
@@ -115,6 +128,27 @@ export interface ImageCropIR {
   bottom: number;
 }
 
+export interface FocalPositionIR {
+  x: number;
+  y: number;
+}
+
+export type ImageMaskIR = { type: "roundRect"; radius?: number } | { type: "circle" };
+
+export interface ImageShadowIR {
+  color: string;
+  opacity: number;
+  blur: number;
+  distance: number;
+  angle: number;
+}
+
+export interface ImagePosterFrameIR {
+  src: string;
+  contentHash?: string;
+  mimeType: "image/png";
+}
+
 export interface ImageElementIR extends ElementBase {
   type: "image";
   src: string;
@@ -122,7 +156,47 @@ export interface ImageElementIR extends ElementBase {
   mimeType?: string;
   fit: "stretch" | "contain" | "cover" | "crop";
   crop?: ImageCropIR;
+  focalPosition?: FocalPositionIR;
+  mask?: ImageMaskIR;
+  border?: StrokeIR;
+  shadow?: ImageShadowIR;
+  posterFrame?: ImagePosterFrameIR;
   role?: "content" | "background";
+}
+
+export interface VideoElementIR extends ElementBase {
+  type: "video";
+  src: string;
+  contentHash?: string;
+  mimeType: "video/mp4";
+  byteLength?: number;
+  posterSrc: string;
+  posterContentHash?: string;
+  posterMimeType: "image/png";
+  captionSrc?: string;
+  captionContentHash?: string;
+  captionMimeType?: "text/vtt";
+  captionLanguage?: string;
+  captionLabel?: string;
+  fit: "contain" | "cover";
+  transcript?: string;
+}
+
+export interface AudioElementIR extends ElementBase {
+  type: "audio";
+  src: string;
+  contentHash?: string;
+  mimeType: "audio/mp4" | "audio/mpeg";
+  byteLength?: number;
+  posterSrc?: string;
+  posterContentHash?: string;
+  posterMimeType?: "image/png";
+  captionSrc?: string;
+  captionContentHash?: string;
+  captionMimeType?: "text/vtt";
+  captionLanguage?: string;
+  captionLabel?: string;
+  transcript?: string;
 }
 
 export interface ShapeElementIR extends ElementBase {
@@ -161,11 +235,16 @@ export interface ConnectorElementIR extends ElementBase {
 
 export interface TableCellIR {
   paragraphs: ParagraphIR[];
+  /** Raw scalar value retained for structured editing and deterministic formatting. */
+  value?: string | number | boolean | null;
+  numberFormat?: TableNumberFormatIR;
   colSpan?: number;
   rowSpan?: number;
   fill?: FillIR;
   textStyle?: Partial<TextStyleIR>;
 }
+
+export type TableNumberFormatIR = "integer" | "decimal" | "percent" | "currency-jpy";
 
 export interface TableRowIR {
   cells: TableCellIR[];
@@ -182,15 +261,33 @@ export interface TableStyleIR {
 export interface TableElementIR extends ElementBase {
   type: "table";
   rows: TableRowIR[];
+  /** Number of leading rows rendered as headers. Compiler output uses 0 or 1. */
+  headerRows?: 0 | 1;
   columnWidths?: number[];
   style: TableStyleIR;
 }
+
+export type ChartTypeIR =
+  | "bar"
+  | "line"
+  | "pie"
+  | "doughnut"
+  | "area"
+  | "scatter"
+  | "radar"
+  | "stacked"
+  | "combo";
+
+export type ChartSeriesTypeIR = "bar" | "line" | "area" | "scatter";
+
+export type ChartLegendPositionIR = "top" | "bottom" | "left" | "right";
 
 export interface ChartSeriesIR {
   name: string;
   labels: string[];
   values: number[];
   color?: string;
+  chartType?: ChartSeriesTypeIR;
 }
 
 export interface ChartStyleIR {
@@ -203,9 +300,13 @@ export interface ChartStyleIR {
 
 export interface ChartElementIR extends ElementBase {
   type: "chart";
-  chartType: "bar" | "line" | "pie";
+  chartType: ChartTypeIR;
   series: ChartSeriesIR[];
   title?: string;
+  categoryAxisTitle?: string;
+  valueAxisTitle?: string;
+  valueUnit?: string;
+  legendPosition?: ChartLegendPositionIR;
   style: ChartStyleIR;
 }
 
@@ -224,6 +325,8 @@ export interface GroupElementIR extends ElementBase {
 export type ElementIR =
   | TextElementIR
   | ImageElementIR
+  | VideoElementIR
+  | AudioElementIR
   | ShapeElementIR
   | LineElementIR
   | ConnectorElementIR
@@ -260,7 +363,7 @@ export interface FontRegistrationIR {
 
 export interface MasterIR {
   id: string;
-  background: FillIR;
+  background: BackgroundIR;
   elements?: ElementIR[];
 }
 
@@ -291,7 +394,7 @@ export interface SlideIR {
   sourcePath: string;
   layoutId: string;
   masterId?: string;
-  background?: FillIR;
+  background?: BackgroundIR;
   elements: ElementIR[];
   notes: SlideNotesIR;
 }

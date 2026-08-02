@@ -1,10 +1,17 @@
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
 import { createDiagnostic, DeckCompileError } from "./diagnostics.js";
+import {
+  DATA_FILE_POLICIES,
+  isSafeWebUrl,
+  MAX_DATA_SOURCE_BYTES,
+  readSecureDeckEntryFile,
+  readSecureDeckFile,
+  SecurityValidationError,
+} from "./security.js";
 import type {
   DeckConfig,
   DeckMdxConfig,
@@ -20,6 +27,21 @@ const idSchema = z
     "IDs must start with a lowercase letter or number and contain a-z, 0-9, _ or -",
   );
 
+const languageSchema = z
+  .string()
+  .min(1)
+  .refine((value) => {
+    try {
+      return Intl.getCanonicalLocales(value).length === 1;
+    } catch {
+      return false;
+    }
+  }, "language must be a valid BCP 47 language tag such as ja-JP or en-US");
+
+const webUrlSchema = z
+  .string()
+  .refine(isSafeWebUrl, "URL must use http or https without embedded credentials");
+
 export const DeckConfigSchema: z.ZodType<DeckConfig> = z
   .object({
     schemaVersion: z.literal(1),
@@ -29,7 +51,7 @@ export const DeckConfigSchema: z.ZodType<DeckConfig> = z
     company: z.string().min(1).optional(),
     theme: z.string().min(1).default("default"),
     canvas: z.literal("wide").default("wide"),
-    language: z.string().min(1).default("ja-JP"),
+    language: languageSchema.default("ja-JP"),
     strictEditable: z.boolean().default(true),
     slides: z.array(z.string().min(1)).min(1),
   })
@@ -58,12 +80,26 @@ export const SlideFrontmatterSchema: z.ZodType<SlideFrontmatter> = z
         z
           .object({
             label: z.string().min(1),
-            url: z.string().url().optional(),
+            url: webUrlSchema.optional(),
           })
           .strict(),
       )
       .default([]),
     masterId: z.string().min(1).optional(),
+    background: z
+      .object({
+        src: z.string().min(1),
+        fit: z.enum(["stretch", "contain", "cover"]).default("cover"),
+        focalPosition: z
+          .object({
+            x: z.number().finite().min(0).max(1),
+            y: z.number().finite().min(0).max(1),
+          })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -76,7 +112,7 @@ export const DeckMdxConfigSchema: z.ZodType<DeckMdxConfig> = z
     company: z.string().min(1).optional(),
     theme: z.string().min(1).default("default"),
     canvas: z.literal("wide").default("wide"),
-    language: z.string().min(1).default("ja-JP"),
+    language: languageSchema.default("ja-JP"),
     strictEditable: z.boolean().default(true),
     slides: z.array(SlideFrontmatterSchema).min(1),
   })
@@ -114,7 +150,7 @@ export const LayoutOverridesSchema: z.ZodType<LayoutOverrides> = z
   .strict();
 
 async function readYamlFile(filePath: string): Promise<unknown> {
-  const source = await readFile(filePath, "utf8");
+  const source = (await readSecureDeckEntryFile(filePath)).data.toString("utf8");
   return parseYaml(source) as unknown;
 }
 
@@ -128,6 +164,18 @@ export async function readDeckConfig(configPath: string): Promise<DeckConfig> {
   try {
     return DeckConfigSchema.parse(await readYamlFile(configPath));
   } catch (error) {
+    if (error instanceof SecurityValidationError) {
+      throw new DeckCompileError(
+        error.issues.map((issue) =>
+          createDiagnostic({
+            severity: "error",
+            code: issue.code,
+            message: `Deck source: ${issue.message}`,
+            sourceLocation: { file: configPath, line: 1, column: 1 },
+          }),
+        ),
+      );
+    }
     const message =
       error instanceof z.ZodError
         ? zodErrorMessage(error)
@@ -150,11 +198,34 @@ export async function readLayoutOverrides(
 ): Promise<LayoutOverrides> {
   const overridePath = path.join(deckDirectory, "layout.overrides.json");
   try {
-    const source = await readFile(overridePath, "utf8");
-    return LayoutOverridesSchema.parse(JSON.parse(source) as unknown);
+    const overrideFile = await readSecureDeckFile({
+      deckDirectory,
+      sourcePath: path.join(deckDirectory, "deck.mdx"),
+      reference: "layout.overrides.json",
+      allowedExtensions: DATA_FILE_POLICIES,
+      defaultMaxBytes: MAX_DATA_SOURCE_BYTES,
+    });
+    return LayoutOverridesSchema.parse(
+      JSON.parse(overrideFile.data.toString("utf8")) as unknown,
+    );
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+    if (
+      error instanceof SecurityValidationError &&
+      error.issues.every((issue) => issue.code === "ASSET_NOT_FOUND")
+    ) {
       return { schemaVersion: 1, slides: {} };
+    }
+    if (error instanceof SecurityValidationError) {
+      throw new DeckCompileError(
+        error.issues.map((issue) =>
+          createDiagnostic({
+            severity: "error",
+            code: issue.code,
+            message: `Layout overrides: ${issue.message}`,
+            sourceLocation: { file: overridePath, line: 1, column: 1 },
+          }),
+        ),
+      );
     }
     const message =
       error instanceof z.ZodError
@@ -177,7 +248,15 @@ export function resolveDeckLocalPath(
   deckDirectory: string,
   relativePath: string,
 ): string | undefined {
-  if (relativePath.includes("\0")) {
+  if (
+    relativePath.includes("\0") ||
+    relativePath.trim() === "" ||
+    path.isAbsolute(relativePath) ||
+    path.win32.isAbsolute(relativePath) ||
+    relativePath.startsWith("//") ||
+    relativePath.startsWith("\\\\") ||
+    /^[a-z][a-z0-9+.-]*:/i.test(relativePath)
+  ) {
     return undefined;
   }
   const resolved = path.resolve(deckDirectory, relativePath);

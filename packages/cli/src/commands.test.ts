@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -116,13 +117,42 @@ describe("newCommand", () => {
     );
   });
 
-  it("rejects an invalid deck id before creating files", async () => {
+  it("keeps a Japanese folder name and generates a safe internal id", async () => {
     const parent = await mkdtemp(path.join(tmpdir(), "livetoon-slide-new-"));
     temporaryDirectories.push(parent);
     const target = path.join(parent, "日本語の資料");
 
+    await newCommand(target, {}, { out: () => {}, error: () => {} });
+
+    const expectedId = `deck-${createHash("sha256")
+      .update("日本語の資料")
+      .digest("hex")
+      .slice(0, 8)}`;
+    const source = await readFile(path.join(target, "deck.mdx"), "utf8");
+    expect(source).toContain(`id: ${expectedId}`);
+    expect(source).toContain('title: "日本語の資料"');
+    expect(source).toContain("# 日本語の資料");
     await expect(
-      newCommand(target, {}, { out: () => {}, error: () => {} }),
+      compileDeckDirectory(target, { theme: companyTheme }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        deck: expect.objectContaining({
+          metadata: expect.objectContaining({
+            id: expectedId,
+            title: "日本語の資料",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("still rejects an explicitly invalid deck id before creating files", async () => {
+    const parent = await mkdtemp(path.join(tmpdir(), "livetoon-slide-new-"));
+    temporaryDirectories.push(parent);
+    const target = path.join(parent, "資料");
+
+    await expect(
+      newCommand(target, { id: "日本語" }, { out: () => {}, error: () => {} }),
     ).rejects.toThrow("Deck id must start");
   });
 });

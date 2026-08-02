@@ -57,6 +57,8 @@ export type NativeObjectKind =
   | "line"
   | "connector"
   | "image"
+  | "video"
+  | "audio"
   | "table"
   | "chart"
   | "unknown";
@@ -86,6 +88,18 @@ export interface InspectedObject {
   text?: string;
   textRuns?: InspectedTextRun[];
   relationshipId?: string;
+  mediaTarget?: string;
+  mediaMimeType?: "video/mp4" | "audio/mp4" | "audio/mpeg";
+  mediaByteLength?: number;
+  mediaContentHash?: string;
+  captionTrackPresent?: boolean;
+  captionRelationshipId?: string;
+  captionRelationshipType?: string;
+  captionTarget?: string;
+  captionMimeType?: string;
+  captionContentHash?: string;
+  captionLanguage?: string;
+  captionLabel?: string;
 }
 
 export interface InspectedSlide {

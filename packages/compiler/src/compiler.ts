@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -14,6 +13,13 @@ import { parseDeckMdx } from "./deck-mdx.js";
 import { resolveDeckEntry } from "./deck-source.js";
 import { createDiagnostic, DeckCompileError } from "./diagnostics.js";
 import { applyLayoutOverrides } from "./overrides.js";
+import {
+  MAX_SLIDE_SOURCE_BYTES,
+  readSecureDeckEntryFile,
+  readSecureDeckFile,
+  SecurityValidationError,
+  SLIDE_FILE_POLICIES,
+} from "./security.js";
 import { calculateDeckContentHash } from "./serialize.js";
 import { compileSlide, compileSlideDocument } from "./slide.js";
 import type {
@@ -72,12 +78,26 @@ export async function compileDeck(
   let parsedDeckMdx: ReturnType<typeof parseDeckMdx> | undefined;
   if (extension === ".mdx") {
     try {
-      const source = await readFile(absoluteConfigPath, "utf8");
+      const source = (await readSecureDeckEntryFile(absoluteConfigPath)).data.toString(
+        "utf8",
+      );
       parsedDeckMdx = parseDeckMdx(source, absoluteConfigPath);
       config = parsedDeckMdx.config;
     } catch (error) {
       if (error instanceof DeckCompileError) {
         throw error;
+      }
+      if (error instanceof SecurityValidationError) {
+        throw new DeckCompileError(
+          error.issues.map((issue) =>
+            createDiagnostic({
+              severity: "error",
+              code: issue.code,
+              message: `Deck source: ${issue.message}`,
+              sourceLocation: { file: absoluteConfigPath, line: 1, column: 1 },
+            }),
+          ),
+        );
       }
       throw new DeckCompileError([
         createDiagnostic({
@@ -170,13 +190,35 @@ export async function compileDeck(
         continue;
       }
       try {
-        const source = await readFile(slidePath, "utf8");
-        const parsed = await compileSlide(source, slidePath, deckDirectory, theme);
+        const slideFile = await readSecureDeckFile({
+          deckDirectory,
+          sourcePath: absoluteConfigPath,
+          reference: slideReference,
+          allowedExtensions: SLIDE_FILE_POLICIES,
+          defaultMaxBytes: MAX_SLIDE_SOURCE_BYTES,
+        });
+        const parsed = await compileSlide(
+          slideFile.data.toString("utf8"),
+          slideFile.path,
+          deckDirectory,
+          theme,
+        );
         slides.push(parsed.slide);
         diagnostics.push(...parsed.diagnostics);
       } catch (error) {
         if (error instanceof DeckCompileError) {
           diagnostics.push(...error.diagnostics);
+        } else if (error instanceof SecurityValidationError) {
+          diagnostics.push(
+            ...error.issues.map((issue) =>
+              createDiagnostic({
+                severity: "error",
+                code: issue.code,
+                message: `Slide "${slideReference}": ${issue.message}`,
+                sourceLocation: { file: absoluteConfigPath, line: 1, column: 1 },
+              }),
+            ),
+          );
         } else {
           diagnostics.push(
             createDiagnostic({

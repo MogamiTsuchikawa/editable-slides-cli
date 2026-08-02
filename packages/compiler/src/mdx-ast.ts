@@ -31,6 +31,7 @@ export interface AstAttribute {
 export interface AstNode {
   type: string;
   value?: string;
+  lang?: string | null;
   name?: string | null;
   url?: string;
   depth?: number;

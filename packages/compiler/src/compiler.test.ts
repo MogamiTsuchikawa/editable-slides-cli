@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { companyTheme } from "@livetoon/slide-theme-company";
 import { defaultTheme } from "@livetoon/slide-theme-default";
 import { describe, expect, it } from "vitest";
 
@@ -26,10 +27,6 @@ const singleFileFixture = path.join(
   "single-file",
   "deck.mdx",
 );
-const companyTheme = structuredClone(defaultTheme);
-companyTheme.ir.id = "company";
-companyTheme.ir.name = "Livetoon Company";
-
 const compileExample = () =>
   compileDeckDirectory(exampleDirectory, { theme: companyTheme });
 

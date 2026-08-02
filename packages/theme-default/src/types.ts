@@ -1,4 +1,5 @@
 import type {
+  BackgroundIR,
   ChartStyleIR,
   FillIR,
   FrameIR,
@@ -23,7 +24,7 @@ export interface LayoutDefinition {
   id: string;
   label: string;
   masterId: string;
-  background?: FillIR;
+  background?: BackgroundIR;
   slots: Record<string, LayoutSlotDefinition>;
 }
 

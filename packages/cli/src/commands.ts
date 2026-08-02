@@ -1,6 +1,19 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { constants as fsConstants } from "node:fs";
-import { access, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  rmdir,
+  writeFile,
+} from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { promisify } from "node:util";
 
@@ -14,19 +27,29 @@ import {
 import { assertPptx, inspectPptx } from "@livetoon/slide-qa-pptx";
 import { writePptxFile } from "@livetoon/slide-renderer-pptx";
 import chokidar from "chokidar";
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 import { parse as parseYaml } from "yaml";
-
+import { renameStableId } from "./id-rename.js";
+import { bakeLayoutOverrides } from "./layout-bake.js";
+import { migrateLegacyDeckSource, readDeckLocalText } from "./migrate.js";
 import {
   atomicWriteText,
   type CompiledArtifact,
   compileArtifact,
   formatDiagnostic,
+  publishStagedOutput,
   type RunningStudio,
   repositoryRoot,
   startStudio,
   writeBuildManifest,
 } from "./runtime.js";
+import {
+  addTemplateFromUrl,
+  listTemplates,
+  materializeTemplate,
+  removeTemplate,
+  resolveTemplate,
+} from "./templates.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -39,6 +62,64 @@ export const consoleIO: CommandIO = {
   out: (message) => console.log(message),
   error: (message) => console.error(message),
 };
+
+export async function setupCommand(io: CommandIO = consoleIO): Promise<void> {
+  const require = createRequire(import.meta.url);
+  const playwrightCli = path.join(
+    path.dirname(require.resolve("playwright/package.json")),
+    "cli.js",
+  );
+  io.out("Chromiumを準備しています…");
+  await execFileAsync(process.execPath, [playwrightCli, "install", "chromium"], {
+    encoding: "utf8",
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  io.out("Chromiumの準備が完了しました。`slide doctor`で環境を確認できます。");
+  io.out(
+    "PDF検査にはPopplerも必要です（macOS: brew install poppler、Ubuntu/Debian: apt install poppler-utils、Windows/共通: mise use -g conda:poppler@26.07.0）。",
+  );
+}
+
+function percentile(values: number[], position: number): number {
+  const sorted = [...values].sort((left, right) => left - right);
+  const index = Math.min(
+    sorted.length - 1,
+    Math.max(0, Math.ceil(sorted.length * position) - 1),
+  );
+  return sorted[index] ?? 0;
+}
+
+export async function benchmarkCommand(
+  deckDirectory: string,
+  options: { runs?: number },
+  io: CommandIO = consoleIO,
+): Promise<void> {
+  const runs = options.runs ?? 5;
+  if (!Number.isSafeInteger(runs) || runs < 1 || runs > 20) {
+    throw new Error("--runsは1から20の整数で指定してください。");
+  }
+  const durations: number[] = [];
+  let artifact: CompiledArtifact | undefined;
+  for (let index = 0; index < runs; index += 1) {
+    const started = performance.now();
+    artifact = await compileArtifact(deckDirectory);
+    durations.push(performance.now() - started);
+  }
+  if (!artifact) throw new Error("性能計測を完了できませんでした。");
+  const result = {
+    deckId: artifact.deck.metadata.id,
+    slides: artifact.deck.slides.length,
+    runs,
+    compileMilliseconds: {
+      median: Math.round(percentile(durations, 0.5) * 100) / 100,
+      p95: Math.round(percentile(durations, 0.95) * 100) / 100,
+      min: Math.round(Math.min(...durations) * 100) / 100,
+      max: Math.round(Math.max(...durations) * 100) / 100,
+    },
+    deckIrBytes: Buffer.byteLength(serializeDeck(artifact.deck), "utf8"),
+  };
+  io.out(JSON.stringify(result, null, 2));
+}
 
 function emitDiagnostics(
   diagnostics: CompiledArtifact["diagnostics"],
@@ -109,15 +190,6 @@ function assertArtifactLint(
   );
 }
 
-function mdxPlainText(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll("{", "&#123;")
-    .replaceAll("}", "&#125;");
-}
-
 function readFrontmatterId(source: string): string | undefined {
   const match = source.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
   if (!match?.[1]) {
@@ -158,70 +230,39 @@ async function findDeckIdOwner(
   return undefined;
 }
 
-function sampleDeckFiles(
-  theme: string,
-  id: string,
-  title: string,
-): Record<string, string> {
-  const heading = mdxPlainText(title);
-  return {
-    "deck.mdx": `---
-schemaVersion: 1
-id: ${id}
-title: ${JSON.stringify(title)}
-author: Livetoon
-company: Livetoon
-theme: ${JSON.stringify(theme)}
-canvas: wide
-language: ja-JP
-strictEditable: true
-slides:
-  - id: cover
-    layout: cover
-    notes: |
-      表紙です。目的を簡潔に説明します。
-    sources: []
-  - id: summary
-    layout: title-body
-    notes: |
-      3つの特徴を順番に説明します。
-    sources:
-      - label: Livetoon Slide
----
-
-<Slide id="cover">
-
-# ${heading}
-
-伝えたい内容から、編集可能なスライドを生成
-
-</Slide>
-
-<Slide id="summary">
-
-# 再現性のあるスライド制作
-
-- MDXを正本としてGitでレビュー
-- Web、PDF、PPTXを同じDeckIRから生成
-- PowerPoint上でも要素を編集可能
-
-</Slide>
-`,
-    "layout.overrides.json": `{
-  "schemaVersion": 1,
-  "slides": {}
-}
-`,
-  };
+function defaultDeckId(directory: string): string {
+  const baseName = path.basename(directory);
+  if ([...baseName].every((character) => (character.codePointAt(0) ?? 128) <= 127)) {
+    const slug = baseName
+      .toLowerCase()
+      .replaceAll(/[^a-z0-9]+/g, "-")
+      .replaceAll(/^-+|-+$/g, "")
+      .slice(0, 64)
+      .replaceAll(/-+$/g, "");
+    if (deckIdPattern.test(slug)) return slug;
+  }
+  const relativeDirectory = path.relative(repositoryRoot, directory);
+  const hashSource =
+    relativeDirectory &&
+    !relativeDirectory.startsWith(`..${path.sep}`) &&
+    relativeDirectory !== ".." &&
+    !path.isAbsolute(relativeDirectory)
+      ? relativeDirectory.split(path.sep).join("/")
+      : baseName;
+  const suffix = createHash("sha256")
+    .update(hashSource.normalize("NFC"), "utf8")
+    .digest("hex")
+    .slice(0, 8);
+  return `deck-${suffix}`;
 }
 
 export async function newCommand(
   target: string,
-  options: { theme?: string; id?: string; title?: string },
+  options: { theme?: string; id?: string; title?: string; template?: string },
   io: CommandIO = consoleIO,
 ): Promise<void> {
   const directory = path.resolve(target);
-  const id = options.id === undefined ? path.basename(directory) : options.id.trim();
+  const id = options.id === undefined ? defaultDeckId(directory) : options.id.trim();
   if (!deckIdPattern.test(id)) {
     throw new Error(
       `Deck id must start with a lowercase letter or number and contain only a-z, 0-9, _ or -. Example: --id sales-kickoff (received: ${id || "empty"})`,
@@ -235,31 +276,199 @@ export async function newCommand(
   }
   const title =
     options.title === undefined
-      ? id.replaceAll(/[-_]+/g, " ")
+      ? (options.id === undefined ? path.basename(directory) : id)
+          .replaceAll(/[-_]+/g, " ")
+          .trim()
+          .replaceAll(/\s+/g, " ")
       : options.title.trim().replaceAll(/\s+/g, " ");
   if (!title) {
     throw new Error("Deck title must not be empty");
   }
-  const theme = options.theme === undefined ? "company" : options.theme.trim();
-  if (!theme) {
+  const theme = options.theme?.trim();
+  if (options.theme !== undefined && !theme) {
     throw new Error("Theme must not be empty");
   }
-  await mkdir(directory, { recursive: true });
-  const existing = await readdir(directory);
-  if (existing.length > 0) {
+  const template = await resolveTemplate(options.template);
+  const existingStats = await lstat(directory).catch(() => undefined);
+  if (existingStats && !existingStats.isDirectory()) {
+    throw new Error(`Target is not a directory: ${directory}`);
+  }
+  if (existingStats && (await readdir(directory)).length > 0) {
     throw new Error(`Target directory is not empty: ${directory}`);
   }
-  const files = sampleDeckFiles(theme, id, title);
-  for (const [relativePath, contents] of Object.entries(files)) {
-    const filePath = path.join(directory, relativePath);
-    await mkdir(path.dirname(filePath), { recursive: true });
-    await writeFile(filePath, contents, { encoding: "utf8", flag: "wx" });
+  const parent = path.dirname(directory);
+  await mkdir(parent, { recursive: true });
+  const staging = await mkdtemp(
+    path.join(parent, `.${path.basename(directory)}-slide-new-`),
+  );
+  try {
+    await materializeTemplate(template, staging, { id, title, theme });
+    if (existingStats) {
+      await rmdir(directory);
+    }
+    try {
+      await rename(staging, directory);
+    } catch (error) {
+      if (existingStats) await mkdir(directory).catch(() => undefined);
+      throw error;
+    }
+  } finally {
+    await rm(staging, { recursive: true, force: true });
   }
-  await Promise.all([
-    mkdir(path.join(directory, "assets")),
-    mkdir(path.join(directory, "data")),
-  ]);
-  io.out(`Created ${directory} (${id}: ${title})`);
+  io.out(`Created ${directory} (${id}: ${title}, template: ${template.registryName})`);
+}
+
+export async function templateAddCommand(
+  source: string,
+  options: {
+    name?: string;
+    sha256?: string;
+    force?: boolean;
+    allowHttp?: boolean;
+  },
+  io: CommandIO = consoleIO,
+): Promise<void> {
+  const added = await addTemplateFromUrl(source, options);
+  if (added.alreadyInstalled) {
+    io.out(
+      `Template ${added.summary.id} is already installed (${added.summary.version}).`,
+    );
+    return;
+  }
+  io.out(
+    `Added template ${added.summary.id} (${added.summary.name} ${added.summary.version}).`,
+  );
+  io.out(`SHA-256: ${added.summary.archiveSha256}`);
+}
+
+export async function templateListCommand(io: CommandIO = consoleIO): Promise<void> {
+  const templates = await listTemplates();
+  for (const template of templates) {
+    io.out(
+      `${template.id}\t${template.builtIn ? "built-in" : "installed"}\t${template.name}\t${template.version}\t${template.theme}`,
+    );
+  }
+}
+
+export async function templateRemoveCommand(
+  name: string,
+  io: CommandIO = consoleIO,
+): Promise<void> {
+  await removeTemplate(name);
+  io.out(`Removed template ${name}. Existing decks were not changed.`);
+}
+
+export async function migrateCommand(
+  deckDirectory: string,
+  io: CommandIO = consoleIO,
+): Promise<void> {
+  const directory = path.resolve(deckDirectory);
+  const target = path.join(directory, "deck.mdx");
+  if (
+    await access(target)
+      .then(() => true)
+      .catch(() => false)
+  ) {
+    throw new Error(`移行先が既に存在するため変更しません: ${target}`);
+  }
+  const migrated = await migrateLegacyDeckSource(directory);
+  await writeFile(target, migrated.source, { encoding: "utf8", flag: "wx" });
+  io.out(
+    `Migrated ${migrated.slideCount} slides to ${target}. 元のdeck.yamlとページファイルは残しています。`,
+  );
+}
+
+export async function layoutBakeCommand(
+  deckDirectory: string,
+  io: CommandIO = consoleIO,
+): Promise<void> {
+  const directory = path.resolve(deckDirectory);
+  const sourcePath = path.join(directory, "deck.mdx");
+  const overridePath = path.join(directory, "layout.overrides.json");
+  const source = await readDeckLocalText(directory, "deck.mdx").catch((error) => {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new Error("layout bakeは単一ファイル形式のdeck.mdxで利用できます。");
+    }
+    throw error;
+  });
+  const rawOverrides = await readDeckLocalText(
+    directory,
+    "layout.overrides.json",
+  ).catch((error) => {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return '{"schemaVersion":1,"slides":{}}\n';
+    }
+    throw error;
+  });
+  const baked = bakeLayoutOverrides(source, JSON.parse(rawOverrides), sourcePath);
+  if (baked.baked.length === 0) {
+    io.out(
+      baked.skipped.length > 0
+        ? `Baked 0 elements. 自動生成要素の調整 ${baked.skipped.length}件は補助ファイルへ残しました。`
+        : "Baked 0 elements. 反映する位置調整はありません。",
+    );
+    return;
+  }
+  await atomicWriteText(sourcePath, baked.source);
+  await atomicWriteText(overridePath, `${JSON.stringify(baked.overrides, null, 2)}\n`);
+  io.out(
+    `Baked ${baked.baked.length} elements into ${sourcePath}. 自動生成要素 ${baked.skipped.length}件は補助ファイルへ残しました。`,
+  );
+}
+
+export async function renameIdCommand(
+  deckDirectory: string,
+  options: {
+    kind?: string;
+    from?: string;
+    to?: string;
+    slide?: string;
+  },
+  io: CommandIO = consoleIO,
+): Promise<void> {
+  if (options.kind !== "slide" && options.kind !== "element") {
+    throw new Error('--kindには"slide"または"element"を指定してください。');
+  }
+  if (!options.from || !options.to) {
+    throw new Error("--fromと--toの両方を指定してください。");
+  }
+  if (options.kind === "element" && !options.slide) {
+    throw new Error("要素IDを変更するときは--slideでページIDを指定してください。");
+  }
+  const directory = path.resolve(deckDirectory);
+  const sourcePath = path.join(directory, "deck.mdx");
+  const overridePath = path.join(directory, "layout.overrides.json");
+  const source = await readDeckLocalText(directory, "deck.mdx");
+  const rawOverrides = await readDeckLocalText(
+    directory,
+    "layout.overrides.json",
+  ).catch((error) => {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return '{"schemaVersion":1,"slides":{}}\n';
+    }
+    throw error;
+  });
+  const renamed = renameStableId(
+    source,
+    JSON.parse(rawOverrides),
+    sourcePath,
+    options.kind === "slide"
+      ? { kind: "slide", from: options.from, to: options.to }
+      : {
+          kind: "element",
+          slideId: options.slide ?? "",
+          from: options.from,
+          to: options.to,
+        },
+  );
+  await atomicWriteText(sourcePath, renamed.source);
+  await atomicWriteText(
+    overridePath,
+    `${JSON.stringify(renamed.overrides, null, 2)}\n`,
+  );
+  io.out(
+    `Renamed ${options.kind} ID ${options.from} → ${options.to} (${renamed.renamedReferences} references updated).`,
+  );
 }
 
 function parseFormats(value: string): Set<"pptx" | "pdf"> {
@@ -464,6 +673,16 @@ async function snapshotArtifact(
     await page.waitForFunction(() =>
       Boolean((window as unknown as { __SLIDES_READY__?: boolean }).__SLIDES_READY__),
     );
+    const layoutIssues = await inspectBrowserLayout(page);
+    if (layoutIssues.length > 0) {
+      const details = layoutIssues
+        .slice(0, 12)
+        .map((issue) => `${issue.slideId}/${issue.elementId}: ${issue.kind}`)
+        .join(", ");
+      throw new Error(
+        `Browser layout check failed (${layoutIssues.length} issue(s)): ${details}`,
+      );
+    }
     const pages = page.locator(".lt-print-page");
     const count = await pages.count();
     if (count !== artifact.deck.slides.length) {
@@ -555,6 +774,68 @@ async function snapshotArtifact(
   }
 }
 
+export interface BrowserLayoutIssue {
+  slideId: string;
+  elementId: string;
+  kind: "text-overflow" | "title-wrap" | "outside-slide";
+}
+
+export async function inspectBrowserLayout(page: Page): Promise<BrowserLayoutIssue[]> {
+  return page.evaluate(() => {
+    const issues: Array<{
+      slideId: string;
+      elementId: string;
+      kind: "text-overflow" | "title-wrap" | "outside-slide";
+    }> = [];
+    const tolerance = 1.5;
+    for (const slide of document.querySelectorAll<HTMLElement>(".lt-slide-canvas")) {
+      const slideId = slide.dataset.slideId ?? "unknown";
+      const slideRect = slide.getBoundingClientRect();
+      for (const element of slide.querySelectorAll<HTMLElement>(
+        "[data-slide-element-id]",
+      )) {
+        const elementId = element.dataset.slideElementId ?? "unknown";
+        const rect = element.getBoundingClientRect();
+        if (
+          rect.left < slideRect.left - tolerance ||
+          rect.top < slideRect.top - tolerance ||
+          rect.right > slideRect.right + tolerance ||
+          rect.bottom > slideRect.bottom + tolerance
+        ) {
+          issues.push({ slideId, elementId, kind: "outside-slide" });
+        }
+
+        const textFrame = element.querySelector<HTMLElement>(".lt-text-element");
+        const textContent = element.querySelector<HTMLElement>(".lt-text-content");
+        if (textFrame && textContent) {
+          if (
+            textContent.scrollWidth > textFrame.clientWidth + tolerance ||
+            textContent.scrollHeight > textFrame.clientHeight + tolerance
+          ) {
+            issues.push({ slideId, elementId, kind: "text-overflow" });
+          }
+          if (elementId.endsWith("--title") || textFrame.dataset.textRole === "title") {
+            const paragraph = textContent.querySelector("p");
+            if (paragraph) {
+              const range = document.createRange();
+              range.selectNodeContents(paragraph);
+              const lineTops = new Set(
+                [...range.getClientRects()]
+                  .filter((line) => line.width > 0 && line.height > 0)
+                  .map((line) => Math.round(line.top)),
+              );
+              if (lineTops.size > 1) {
+                issues.push({ slideId, elementId, kind: "title-wrap" });
+              }
+            }
+          }
+        }
+      }
+    }
+    return issues;
+  });
+}
+
 export async function releaseCommand(
   deckDirectory: string,
   options: { format?: string; port?: number },
@@ -564,7 +845,10 @@ export async function releaseCommand(
   parseFormats(format);
   let artifact: CompiledArtifact;
   try {
-    artifact = await compileArtifact(deckDirectory, { failOnWarnings: true });
+    artifact = await compileArtifact(deckDirectory, {
+      failOnWarnings: true,
+      staging: true,
+    });
     assertArtifactLint(artifact, { strictEditable: true }, io);
   } catch (error) {
     if (error instanceof DeckCompileError) {
@@ -574,17 +858,33 @@ export async function releaseCommand(
     }
     throw error;
   }
-  await snapshotArtifact(artifact, { port: options.port }, io);
-  await exportArtifact(
-    artifact,
-    {
-      format,
-      strictEditable: true,
-      port: options.port,
-    },
-    io,
-  );
-  io.out(`Release complete: ${artifact.outputDirectory}`);
+  const stagedIo: CommandIO = {
+    out: (message) =>
+      io.out(
+        message.replaceAll(artifact.outputDirectory, artifact.finalOutputDirectory),
+      ),
+    error: (message) =>
+      io.error(
+        message.replaceAll(artifact.outputDirectory, artifact.finalOutputDirectory),
+      ),
+  };
+  try {
+    await snapshotArtifact(artifact, { port: options.port }, stagedIo);
+    await exportArtifact(
+      artifact,
+      {
+        format,
+        strictEditable: true,
+        port: options.port,
+      },
+      stagedIo,
+    );
+    await publishStagedOutput(artifact.outputDirectory, artifact.finalOutputDirectory);
+  } catch (error) {
+    await rm(artifact.outputDirectory, { recursive: true, force: true });
+    throw error;
+  }
+  io.out(`Release complete: ${artifact.finalOutputDirectory}`);
 }
 
 export async function inspectCommand(
@@ -625,14 +925,7 @@ async function waitForExit(child: RunningStudio): Promise<void> {
     };
     process.once("SIGINT", shutdown);
     process.once("SIGTERM", shutdown);
-    child.child.once("error", reject);
-    child.child.once("exit", (code, signal) => {
-      if (code === 0 || signal === "SIGTERM" || signal === "SIGINT") {
-        resolve();
-      } else {
-        reject(new Error(`Studio exited with code ${code ?? signal}`));
-      }
-    });
+    void child.closed.then(resolve, reject);
   });
 }
 
@@ -645,7 +938,7 @@ export async function devCommand(
   emitDiagnostics(artifact.diagnostics, io);
   const studio = await startStudio(artifact, {
     open: options.open,
-    port: options.port ?? 4173,
+    port: options.port,
     inheritOutput: true,
   });
   io.out(`Editor: ${studio.baseUrl}/edit/${artifact.deck.metadata.id}`);
@@ -663,6 +956,7 @@ export async function devCommand(
     try {
       artifact = await compileArtifact(deckDirectory);
       emitDiagnostics(artifact.diagnostics, io);
+      studio.notify("deck");
       io.out(`Recompiled ${new Date().toLocaleTimeString()}`);
     } catch (error) {
       if (error instanceof DeckCompileError) {
@@ -757,8 +1051,7 @@ export async function collectDoctorChecks(): Promise<DoctorCheck[]> {
   checks.push({
     name: "Chromium",
     status: chromiumPath ? "ok" : "error",
-    detail:
-      chromiumPath ?? "not found; run `mise run setup` or set SLIDE_CHROMIUM_PATH",
+    detail: chromiumPath ?? "not found; run `slide setup` or set SLIDE_CHROMIUM_PATH",
   });
   const pdfinfo = await commandVersion("pdfinfo", ["-v"]);
   checks.push({
@@ -773,7 +1066,7 @@ export async function collectDoctorChecks(): Promise<DoctorCheck[]> {
   for (const probe of pdfToolProbes) {
     const isPoppler = probe.implementation === "poppler";
     const remedy =
-      "Run `mise run setup`, set SLIDE_POPPLER_BIN, or set the individual PDF tool path";
+      "install Poppler so pdftotext/pdffonts are on PATH, set SLIDE_POPPLER_BIN, or set the individual PDF tool path";
     checks.push({
       name: `Poppler ${probe.name}`,
       status: isPoppler ? "ok" : "error",
@@ -792,7 +1085,7 @@ export async function collectDoctorChecks(): Promise<DoctorCheck[]> {
     status: libreOffice ? "ok" : "warning",
     detail:
       libreOffice ??
-      "not found; run `mise run setup:office` on macOS to enable PPTX smoke rendering",
+      "not found (optional; install LibreOffice only for PPTX smoke rendering)",
   });
   const powerPointPath =
     process.platform === "darwin"
@@ -821,7 +1114,7 @@ export async function collectDoctorChecks(): Promise<DoctorCheck[]> {
       status: available ? "ok" : "warning",
       detail: available
         ? "installed"
-        : "not installed; run `mise run setup:office` on macOS for PowerPoint fidelity",
+        : "not installed (optional; install Noto Sans JP / Noto Sans Mono for PowerPoint fidelity)",
     });
   }
   const writable = await access(repositoryRoot, fsConstants.W_OK)

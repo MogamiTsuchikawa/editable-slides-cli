@@ -1,6 +1,13 @@
 import { z } from "zod";
-
+import { validateChartContract } from "./chart-contract.js";
+import {
+  MAX_TABLE_CELL_SPAN,
+  tableDimensionsMatch,
+  validateTableGrid,
+} from "./table-grid.js";
 import type {
+  AudioElementIR,
+  BackgroundIR,
   ChartElementIR,
   ConnectorElementIR,
   DeckIR,
@@ -22,6 +29,7 @@ import type {
   TableElementIR,
   TextElementIR,
   TextRunIR,
+  VideoElementIR,
 } from "./types.js";
 import { DECK_IR_SCHEMA_VERSION, WIDE_CANVAS } from "./types.js";
 
@@ -131,6 +139,7 @@ const elementBaseShape = {
   editable: z.boolean().optional(),
   fallbackReason: z.string().min(1).optional(),
   alt: z.string().min(1).optional(),
+  decorative: z.boolean().optional(),
   sourceLocation: SourceLocationSchema,
 };
 
@@ -141,6 +150,50 @@ export const TextElementIRSchema: z.ZodType<TextElementIR> = z
     role: z.enum(["title", "heading", "body", "caption", "code"]).optional(),
     paragraphs: z.array(ParagraphIRSchema),
     style: TextStyleIRSchema,
+  })
+  .strict();
+
+const FocalPositionIRSchema = z.object({ x: unitInterval, y: unitInterval }).strict();
+
+export const BackgroundIRSchema: z.ZodType<BackgroundIR> = z.union([
+  FillIRSchema,
+  z
+    .object({
+      type: z.literal("image"),
+      src: z.string().min(1),
+      contentHash: z.string().min(1).optional(),
+      mimeType: z.string().min(1).optional(),
+      fit: z.enum(["stretch", "contain", "cover"]),
+      focalPosition: FocalPositionIRSchema.optional(),
+    })
+    .strict(),
+]);
+
+const ImageMaskIRSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("roundRect"),
+      radius: finiteNumber.positive().optional(),
+    })
+    .strict(),
+  z.object({ type: z.literal("circle") }).strict(),
+]);
+
+const ImageShadowIRSchema = z
+  .object({
+    color,
+    opacity: unitInterval,
+    blur: nonNegativeNumber,
+    distance: nonNegativeNumber,
+    angle: finiteNumber,
+  })
+  .strict();
+
+const ImagePosterFrameIRSchema = z
+  .object({
+    src: z.string().min(1),
+    contentHash: z.string().min(1).optional(),
+    mimeType: z.literal("image/png"),
   })
   .strict();
 
@@ -161,9 +214,154 @@ export const ImageElementIRSchema: z.ZodType<ImageElementIR> = z
       })
       .strict()
       .optional(),
+    focalPosition: FocalPositionIRSchema.optional(),
+    mask: ImageMaskIRSchema.optional(),
+    border: StrokeIRSchema.optional(),
+    shadow: ImageShadowIRSchema.optional(),
+    posterFrame: ImagePosterFrameIRSchema.optional(),
     role: z.enum(["content", "background"]).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((image, context) => {
+    if (
+      image.crop &&
+      (image.crop.left + image.crop.right >= 1 ||
+        image.crop.top + image.crop.bottom >= 1)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "crop must leave a visible area",
+        path: ["crop"],
+      });
+    }
+    if (image.crop && image.fit !== "crop") {
+      context.addIssue({
+        code: "custom",
+        message: 'fit must be "crop" when crop is provided',
+        path: ["fit"],
+      });
+    }
+    if (image.mimeType === "image/gif" && !image.posterFrame) {
+      context.addIssue({
+        code: "custom",
+        message: "GIF images require a PNG posterFrame for print and PDF output",
+        path: ["posterFrame"],
+      });
+    }
+  });
+
+export const VideoElementIRSchema: z.ZodType<VideoElementIR> = z
+  .object({
+    ...elementBaseShape,
+    type: z.literal("video"),
+    src: z.string().min(1),
+    contentHash: z.string().min(1).optional(),
+    mimeType: z.literal("video/mp4"),
+    byteLength: z.number().int().nonnegative().optional(),
+    posterSrc: z.string().min(1),
+    posterContentHash: z.string().min(1).optional(),
+    posterMimeType: z.literal("image/png"),
+    captionSrc: z.string().min(1).optional(),
+    captionContentHash: z.string().min(1).optional(),
+    captionMimeType: z.literal("text/vtt").optional(),
+    captionLanguage: z.string().trim().min(1).optional(),
+    captionLabel: z.string().trim().min(1).optional(),
+    fit: z.enum(["contain", "cover"]),
+    transcript: z.string().min(1).optional(),
+  })
+  .strict()
+  .superRefine((video, context) => {
+    if (!video.alt?.trim() && !video.transcript?.trim()) {
+      context.addIssue({
+        code: "custom",
+        message: "video requires non-empty alt text or transcript",
+        path: ["alt"],
+      });
+    }
+    if (video.captionSrc && !video.captionMimeType) {
+      context.addIssue({
+        code: "custom",
+        message: "captionMimeType is required when captionSrc is provided",
+        path: ["captionMimeType"],
+      });
+    }
+    if (
+      !video.captionSrc &&
+      (video.captionContentHash ||
+        video.captionMimeType ||
+        video.captionLanguage ||
+        video.captionLabel)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "captionSrc is required when caption metadata is provided",
+        path: ["captionSrc"],
+      });
+    }
+  });
+
+export const AudioElementIRSchema: z.ZodType<AudioElementIR> = z
+  .object({
+    ...elementBaseShape,
+    type: z.literal("audio"),
+    src: z.string().min(1),
+    contentHash: z.string().min(1).optional(),
+    mimeType: z.enum(["audio/mp4", "audio/mpeg"]),
+    byteLength: z.number().int().nonnegative().optional(),
+    posterSrc: z.string().min(1).optional(),
+    posterContentHash: z.string().min(1).optional(),
+    posterMimeType: z.literal("image/png").optional(),
+    captionSrc: z.string().min(1).optional(),
+    captionContentHash: z.string().min(1).optional(),
+    captionMimeType: z.literal("text/vtt").optional(),
+    captionLanguage: z.string().trim().min(1).optional(),
+    captionLabel: z.string().trim().min(1).optional(),
+    transcript: z.string().min(1).optional(),
+  })
+  .strict()
+  .superRefine((audio, context) => {
+    if (!audio.alt?.trim() && !audio.transcript?.trim()) {
+      context.addIssue({
+        code: "custom",
+        message: "audio requires non-empty alt text or transcript",
+        path: ["alt"],
+      });
+    }
+    if (audio.posterSrc && !audio.posterMimeType) {
+      context.addIssue({
+        code: "custom",
+        message: "posterMimeType is required when posterSrc is provided",
+        path: ["posterMimeType"],
+      });
+    }
+    if (!audio.posterSrc && (audio.posterContentHash || audio.posterMimeType)) {
+      context.addIssue({
+        code: "custom",
+        message: "posterSrc is required when poster metadata is provided",
+        path: ["posterSrc"],
+      });
+    }
+    if (audio.captionSrc && !audio.captionMimeType) {
+      context.addIssue({
+        code: "custom",
+        message: "captionMimeType is required when captionSrc is provided",
+        path: ["captionMimeType"],
+      });
+    }
+    if (
+      !audio.captionSrc &&
+      (audio.captionContentHash ||
+        audio.captionMimeType ||
+        audio.captionLanguage ||
+        audio.captionLabel)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "captionSrc is required when caption metadata is provided",
+        path: ["captionSrc"],
+      });
+    }
+  });
 
 export const ShapeElementIRSchema: z.ZodType<ShapeElementIR> = z
   .object({
@@ -207,25 +405,34 @@ export const ConnectorElementIRSchema: z.ZodType<ConnectorElementIR> = z
 const tableCellSchema = z
   .object({
     paragraphs: z.array(ParagraphIRSchema),
-    colSpan: z.number().int().positive().optional(),
-    rowSpan: z.number().int().positive().optional(),
+    value: z.union([z.string(), finiteNumber, z.boolean(), z.null()]).optional(),
+    numberFormat: z.enum(["integer", "decimal", "percent", "currency-jpy"]).optional(),
+    colSpan: z.number().int().min(1).max(MAX_TABLE_CELL_SPAN).optional(),
+    rowSpan: z.number().int().min(1).max(MAX_TABLE_CELL_SPAN).optional(),
     fill: FillIRSchema.optional(),
     textStyle: TextStyleIRSchema.partial().optional(),
   })
-  .strict();
+  .strict()
+  .refine((cell) => cell.numberFormat === undefined || typeof cell.value === "number", {
+    message: "numberFormat requires a numeric value",
+    path: ["numberFormat"],
+  });
 
 export const TableElementIRSchema: z.ZodType<TableElementIR> = z
   .object({
     ...elementBaseShape,
     type: z.literal("table"),
-    rows: z.array(
-      z
-        .object({
-          cells: z.array(tableCellSchema),
-          height: finiteNumber.positive().optional(),
-        })
-        .strict(),
-    ),
+    rows: z
+      .array(
+        z
+          .object({
+            cells: z.array(tableCellSchema).min(1),
+            height: finiteNumber.positive().optional(),
+          })
+          .strict(),
+      )
+      .min(1),
+    headerRows: z.union([z.literal(0), z.literal(1)]).optional(),
     columnWidths: z.array(finiteNumber.positive()).optional(),
     style: z
       .object({
@@ -236,27 +443,105 @@ export const TableElementIRSchema: z.ZodType<TableElementIR> = z
       })
       .strict(),
   })
-  .strict();
+  .strict()
+  .superRefine((table, context) => {
+    const grid = validateTableGrid(table.rows);
+    if (!grid.success) {
+      const { issue } = grid;
+      context.addIssue({
+        code: "custom",
+        message: issue.message,
+        path:
+          issue.code === "empty-table"
+            ? ["rows"]
+            : [
+                "rows",
+                issue.rowIndex,
+                "cells",
+                ...(issue.cellIndex === undefined ? [] : [issue.cellIndex]),
+                ...(issue.property ? [issue.property] : []),
+              ],
+      });
+      return;
+    }
+    if ((table.headerRows ?? 1) > table.rows.length) {
+      context.addIssue({
+        code: "custom",
+        message: "headerRows must not exceed the number of table rows",
+        path: ["headerRows"],
+      });
+    }
+    if (table.columnWidths && table.columnWidths.length !== grid.columnCount) {
+      context.addIssue({
+        code: "custom",
+        message: `columnWidths must contain ${grid.columnCount} values`,
+        path: ["columnWidths"],
+      });
+    }
+    if (
+      table.columnWidths &&
+      !tableDimensionsMatch(table.columnWidths, table.frame.w)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: `columnWidths must add up to table width ${table.frame.w}`,
+        path: ["columnWidths"],
+      });
+    }
+    const rowHeights = table.rows.map((row) => row.height);
+    if (rowHeights.some((height) => height !== undefined)) {
+      if (rowHeights.some((height) => height === undefined)) {
+        context.addIssue({
+          code: "custom",
+          message: "row height must be specified for every row",
+          path: ["rows"],
+        });
+      } else if (!tableDimensionsMatch(rowHeights as number[], table.frame.h)) {
+        context.addIssue({
+          code: "custom",
+          message: `row heights must add up to table height ${table.frame.h}`,
+          path: ["rows"],
+        });
+      }
+    }
+  });
 
 export const ChartElementIRSchema: z.ZodType<ChartElementIR> = z
   .object({
     ...elementBaseShape,
     type: z.literal("chart"),
-    chartType: z.enum(["bar", "line", "pie"]),
-    series: z.array(
-      z
-        .object({
-          name: z.string(),
-          labels: z.array(z.string()),
-          values: z.array(finiteNumber),
-          color: color.optional(),
-        })
-        .strict()
-        .refine((series) => series.labels.length === series.values.length, {
-          message: "labels and values must have the same length",
-        }),
-    ),
+    chartType: z.enum([
+      "bar",
+      "line",
+      "pie",
+      "doughnut",
+      "area",
+      "scatter",
+      "radar",
+      "stacked",
+      "combo",
+    ]),
+    series: z
+      .array(
+        z
+          .object({
+            name: z.string(),
+            labels: z.array(z.string()).min(1),
+            values: z.array(finiteNumber).min(1),
+            color: color.optional(),
+            chartType: z.enum(["bar", "line", "area", "scatter"]).optional(),
+          })
+          .strict()
+          .refine((series) => series.labels.length === series.values.length, {
+            message: "labels and values must have the same length",
+          }),
+      )
+      .min(1),
     title: z.string().optional(),
+    categoryAxisTitle: z.string().min(1).optional(),
+    valueAxisTitle: z.string().min(1).optional(),
+    valueUnit: z.string().min(1).optional(),
+    legendPosition: z.enum(["top", "bottom", "left", "right"]).optional(),
     style: z
       .object({
         colors: z.array(color),
@@ -267,7 +552,26 @@ export const ChartElementIRSchema: z.ZodType<ChartElementIR> = z
       })
       .strict(),
   })
-  .strict();
+  .strict()
+  .superRefine((chart, context) => {
+    const contract = validateChartContract(chart.chartType, chart.series);
+    if (!contract.success) {
+      const { issue } = contract;
+      const path: Array<string | number> = ["series"];
+      if (issue.seriesIndex !== undefined) path.push(issue.seriesIndex);
+      if (issue.pointIndex !== undefined) {
+        path.push(
+          issue.code === "scatter-label-not-numeric" ? "labels" : "values",
+          issue.pointIndex,
+        );
+      }
+      context.addIssue({
+        code: "custom",
+        message: issue.message,
+        path,
+      });
+    }
+  });
 
 export const IconElementIRSchema: z.ZodType<IconElementIR> = z
   .object({
@@ -291,6 +595,8 @@ export const ElementIRSchema: z.ZodType<ElementIR> = z.lazy(() =>
   z.union([
     TextElementIRSchema,
     ImageElementIRSchema,
+    VideoElementIRSchema,
+    AudioElementIRSchema,
     ShapeElementIRSchema,
     LineElementIRSchema,
     ConnectorElementIRSchema,
@@ -304,7 +610,7 @@ export const ElementIRSchema: z.ZodType<ElementIR> = z.lazy(() =>
 export const MasterIRSchema: z.ZodType<MasterIR> = z
   .object({
     id: z.string().min(1),
-    background: FillIRSchema,
+    background: BackgroundIRSchema,
     elements: z.array(ElementIRSchema).optional(),
   })
   .strict();
@@ -370,7 +676,7 @@ export const SlideIRSchema: z.ZodType<SlideIR> = z
     sourcePath: z.string().min(1),
     layoutId: z.string().min(1),
     masterId: z.string().min(1).optional(),
-    background: FillIRSchema.optional(),
+    background: BackgroundIRSchema.optional(),
     elements: z.array(ElementIRSchema),
     notes: z
       .object({

@@ -2,6 +2,7 @@ import type { Diagnostic, ElementIR, SlideIR } from "@livetoon/slide-deck-ir";
 import { WIDE_CANVAS } from "@livetoon/slide-deck-ir";
 import type { ThemeDefinition } from "@livetoon/slide-theme-default";
 
+import { validateSlideAccessibility } from "./accessibility.js";
 import { createDiagnostic } from "./diagnostics.js";
 
 function flattenElements(elements: ElementIR[]): ElementIR[] {
@@ -72,7 +73,23 @@ export function validateSlides(
       elementIds.add(element.id);
 
       const { x, y, w, h } = element.frame;
-      if (x < 0 || y < 0 || x + w > WIDE_CANVAS.width || y + h > WIDE_CANVAS.height) {
+      if (![x, y, w, h].every(Number.isFinite) || w <= 0 || h <= 0) {
+        diagnostics.push(
+          createDiagnostic({
+            severity: "error",
+            code: "ELEMENT_FRAME_INVALID",
+            message: "Element frame must contain finite coordinates and positive size",
+            sourceLocation: element.sourceLocation,
+            slideId: slide.id,
+            elementId: element.id,
+          }),
+        );
+      } else if (
+        x < 0 ||
+        y < 0 ||
+        x + w > WIDE_CANVAS.width ||
+        y + h > WIDE_CANVAS.height
+      ) {
         diagnostics.push(
           createDiagnostic({
             severity: "error",
@@ -158,6 +175,26 @@ export function validateSlides(
           );
         }
       }
+    }
+
+    for (const issue of validateSlideAccessibility(slide, theme)) {
+      const element = issue.elementId
+        ? elements.find((candidate) => candidate.id === issue.elementId)
+        : undefined;
+      diagnostics.push(
+        createDiagnostic({
+          severity: issue.severity,
+          code: issue.code,
+          message: issue.message,
+          sourceLocation: element?.sourceLocation ?? {
+            file: slide.sourcePath,
+            line: 1,
+            column: 1,
+          },
+          slideId: slide.id,
+          elementId: issue.elementId,
+        }),
+      );
     }
   }
 

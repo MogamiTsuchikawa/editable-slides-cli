@@ -17,6 +17,56 @@ AIは初回準備、構成、Livetoonテーマでの制作、発表者原稿、�
 入力資料はチャットへ添付するか、`materials/`へ置いてファイル名を伝えます。
 コピーして使える依頼例は[`START_HERE.md`](./START_HERE.md)にあります。
 
+## CLIで使う
+
+GitHub Actionsの`package` workflow、またはローカルの`npm pack`で作成した
+`.tgz`を導入すると、リポジトリをcloneせずに利用できます。
+
+```bash
+npm install --global ./livetoon-slide-cli-0.1.0.tgz
+slide setup
+slide new -t livetoon "資料名"
+slide dev "資料名" --open
+slide release "資料名"
+```
+
+`livetoon`は同梱のLivetoonテンプレートで、`company`テーマを使います。
+日本語の資料名はそのままフォルダ名と表示名になり、内部で必要な英数字のIDは
+自動で作られます。
+
+信頼できるURLからZIPテンプレートを登録すると、同じ`-t`指定で再利用できます。
+
+```bash
+slide template add https://example.com/templates/sales.zip --name sales
+slide template list
+slide new -t sales "営業提案資料"
+```
+
+ZIPの構成、更新・削除、安全な登録方法は
+[`docs/cli-guide.md`](./docs/cli-guide.md#urlからテンプレートを追加する)を参照してください。
+
+公開範囲とライセンスの確認後は、同じpackageをnpmまたはGitHub Packagesから
+導入できるようにします。現時点では誤公開を防ぐためpackageを非公開設定にしています。
+
+配布用tarballをローカルで作る場合は次を実行します。
+
+```bash
+npm run build:runtime
+npm pack --workspace=@livetoon/slide-cli
+```
+
+公式LivetoonテンプレートのZIPとSHA-256を作る場合は、次を実行します。
+
+```bash
+npm run build:template
+```
+
+成果物は`artifacts/templates/`へ生成されます。ZIP自体は原本と重複するため
+Git管理せず、GitHub Actionsの配布物または将来のGitHub Releaseへ掲載します。
+
+初回準備、主なコマンド、困ったときの対処は、
+[`docs/cli-guide.md`](./docs/cli-guide.md)を参照してください。
+
 ## 手動セットアップ
 
 前提は[mise](https://mise.jdx.dev/) 2026.3.10以降だけです。
@@ -39,16 +89,14 @@ mise run qa           # lint・型検査・テスト
 mise run test:visual  # Web視覚回帰
 ```
 
-新しい資料は固有の英小文字名と表示タイトルを指定して作成します。
+新しい資料は、使うテンプレートと資料名を指定して作成します。
 `release`は警告検査、全体一覧と全ページ画像、編集可能PPTX、
 PDFの出力をまとめて行います。
 
 ```bash
-mise exec -- npm run slide -- new decks/my-deck \
-  --title "資料タイトル" \
-  --theme company
-mise exec -- npm run slide -- dev decks/my-deck --open
-mise exec -- npm run slide -- release decks/my-deck
+mise exec -- npm run slide -- new -t livetoon "資料名"
+mise exec -- npm run slide -- dev "資料名" --open
+mise exec -- npm run slide -- release "資料名"
 ```
 
 ## Livetoonテーマ
@@ -148,14 +196,22 @@ slides:
 
 ## Studio
 
-StudioはEdit中心の1画面です。
+Studioは、ブラウザでスライドを確認しながら仕上げる編集画面です。
 
-- 左: 常設のスライドサムネイル。クリックしてスライドを選択
-- 中央: 選択、移動、リサイズ、回転ができる編集キャンバス
-- 右: レイアウト操作と、選択したテキストのMarkdown編集
-- 右上: デバッグアイコン。診断情報をdrawerで開閉
+- 左: ページの選択、追加、複製、削除、並べ替え
+- 中央: 要素の選択、移動、拡大・縮小、回転
+- 右: 文字、発表者原稿、出典、表の寸法・結合・表示、グラフの軸・凡例・系列の編集
+- 右上の再生ボタン: 発表者画面を別ウィンドウで表示
 
-テキスト変更は元の`deck.mdx`へ保存され、再コンパイル後のWeb、PPTX、PDFへ反映されます。専用のPresenter、Overview、Debug画面はありません。PDF生成用のprintルートと、PPTXへ出力する発表者ノートは維持しています。
+位置の調整は自動保存されます。文字、発表者原稿、出典、表、グラフは、
+右側の保存ボタンを押すと資料本体へ反映されます。発表者画面では、現在のページ、
+次のページ、発表者原稿、出典、経過時間をまとめて確認できます。
+表は見出し行や結合を保ったまま編集でき、結合セルがある間は行・列の追加と削除を
+止めて構造を保護します。円グラフとドーナツグラフは一系列で作成します。
+
+ページ操作は新しい単一ファイル形式の資料で利用できます。ほかの場所で資料が
+更新された場合は、上書きせずに再読み込みを促します。詳しい操作方法と、
+競合時の対処は[`docs/studio-guide.md`](./docs/studio-guide.md)を参照してください。
 
 ## 後方互換
 
@@ -181,3 +237,9 @@ LibreOffice、Noto Sans JP、Noto Sans Monoが導入されます。PowerPoint自
 - `dist/livetoon-theme/livetoon-theme.pdf`
 
 詳細な設計と実装状況は[`PLAN.md`](./PLAN.md)を参照してください。
+GitHub/npmから導入できるCLIへ移行するための優先順位と完了条件は、
+[`docs/distribution-roadmap.md`](./docs/distribution-roadmap.md)にまとめています。
+動画、音声、図解、表・チャート、Studio編集などの追加候補は、
+[`docs/authoring-feature-roadmap.md`](./docs/authoring-feature-roadmap.md)にまとめています。
+実装済み要素の利用例と出力先ごとの挙動は、
+[`docs/component-reference.md`](./docs/component-reference.md)を参照してください。

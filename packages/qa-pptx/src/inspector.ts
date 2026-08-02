@@ -28,6 +28,8 @@ const REQUIRED_PACKAGE_FILES = [
 ];
 const TABLE_RELATIONSHIP_URI = "http://schemas.openxmlformats.org/drawingml/2006/table";
 const CHART_RELATIONSHIP_URI = "http://schemas.openxmlformats.org/drawingml/2006/chart";
+const TRACK_RELATIONSHIP_URI =
+  "http://schemas.microsoft.com/office/2017/04/relationships/track";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -48,6 +50,13 @@ interface ExpectedElement {
   role?: string;
   text?: string;
   textRuns: ExpectedTextRun[];
+  mimeType?: string;
+  byteLength?: number;
+  contentHash?: string;
+  captionSrc?: string;
+  captionContentHash?: string;
+  captionLanguage?: string;
+  captionLabel?: string;
 }
 
 interface ExpectedTextRun {
@@ -63,6 +72,11 @@ interface Relationship {
   id: string;
   type: string;
   target: string;
+}
+
+interface PackageContentTypes {
+  defaults: Map<string, string>;
+  overrides: Map<string, string>;
 }
 
 interface InspectedObjectInternal extends InspectedObject {
@@ -104,6 +118,7 @@ export async function inspectPptx(
       });
     }
   }
+  const contentTypes = await readPackageContentTypes(zip, issues);
 
   const slideFiles = Object.keys(zip.files)
     .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
@@ -145,11 +160,21 @@ export async function inspectPptx(
       continue;
     }
 
-    const actualObjects = inspectSlideObjects(document, canvas);
     const relationships = await readRelationships(
       zip,
       relationshipPath(fileName),
       issues,
+      index + 1,
+    );
+    const actualObjects = inspectSlideObjects(document, canvas, relationships);
+    await inspectMediaRelationships(
+      zip,
+      fileName,
+      actualObjects,
+      relationships,
+      contentTypes,
+      issues,
+      deck?.slides[index]?.id,
       index + 1,
     );
     const notesRelationship = relationships.find((relationship) =>
@@ -279,6 +304,7 @@ export async function assertPptx(
 function inspectSlideObjects(
   document: UnknownRecord,
   canvas: CanvasMetrics,
+  relationships: Relationship[],
 ): InspectedObjectInternal[] {
   const slide = asRecord(document["p:sld"]);
   const commonSlideData = asRecord(slide["p:cSld"]);
@@ -328,13 +354,34 @@ function inspectSlideObjects(
     const source = asRecord(picture);
     const nonVisual = asRecord(source["p:nvPicPr"]);
     const nonVisualProperties = asRecord(nonVisual["p:cNvPr"]);
+    const applicationNonVisualProperties = asRecord(nonVisual["p:nvPr"]);
+    const mediaFile = asRecord(
+      applicationNonVisualProperties["a:audioFile"] ??
+        applicationNonVisualProperties["a:videoFile"],
+    );
+    const mediaRelationshipId = stringValue(mediaFile["@_r:link"]);
+    const mediaRelationship = relationships.find(
+      (relationship) => relationship.id === mediaRelationshipId,
+    );
+    const captionTracks = collectValuesForKey(source, "p173:track");
+    const captionTrack = asRecord(captionTracks[0]);
+    const mediaKind: NativeObjectKind = mediaRelationship?.type.endsWith("/audio")
+      ? "audio"
+      : mediaRelationship?.type.endsWith("/video")
+        ? "video"
+        : "image";
     const shapeProperties = asRecord(source["p:spPr"]);
     result.push(
       createInspectedObject({
         name: stringValue(nonVisualProperties["@_name"]),
-        nativeKind: "image",
+        nativeKind: mediaKind,
         ooxmlElement: "p:pic",
         xfrm: asRecord(shapeProperties["a:xfrm"]),
+        relationshipId: mediaRelationshipId,
+        captionTrackPresent: captionTracks.length > 0,
+        captionRelationshipId: stringValue(captionTrack["@_r:embed"]),
+        captionLanguage: stringValue(captionTrack["@_lang"]),
+        captionLabel: stringValue(captionTrack["@_label"]),
         source,
         canvas,
       }),
@@ -378,6 +425,10 @@ function createInspectedObject(input: {
   xfrm: UnknownRecord;
   textContainer?: unknown;
   relationshipId?: string;
+  captionTrackPresent?: boolean;
+  captionRelationshipId?: string;
+  captionLanguage?: string;
+  captionLabel?: string;
   source: UnknownRecord;
   canvas: CanvasMetrics;
 }): InspectedObjectInternal {
@@ -394,6 +445,10 @@ function createInspectedObject(input: {
     text,
     textRuns,
     relationshipId: input.relationshipId || undefined,
+    captionTrackPresent: input.captionTrackPresent || undefined,
+    captionRelationshipId: input.captionRelationshipId || undefined,
+    captionLanguage: input.captionLanguage || undefined,
+    captionLabel: input.captionLabel || undefined,
     source: input.source,
   };
 }
@@ -497,6 +552,11 @@ function verifyExpectedObjects(
       elementValid =
         verifyTextRuns(expected, actual, issues, slideId, slideNumber) && elementValid;
     }
+    if (expected.type === "video" || expected.type === "audio") {
+      elementValid =
+        verifyExpectedMedia(expected, actual, issues, slideId, slideNumber) &&
+        elementValid;
+    }
     if (elementValid) {
       verified += 1;
     }
@@ -518,6 +578,117 @@ function verifyExpectedObjects(
     }
   }
   return verified;
+}
+
+function verifyExpectedMedia(
+  expected: ExpectedElement,
+  actual: InspectedObjectInternal,
+  issues: InspectionIssue[],
+  slideId: string,
+  slideNumber: number,
+): boolean {
+  let valid = true;
+  const comparisons = [
+    {
+      property: "mimeType",
+      expected: expected.mimeType,
+      actual: actual.mediaMimeType,
+    },
+    {
+      property: "byteLength",
+      expected: expected.byteLength,
+      actual: actual.mediaByteLength,
+    },
+    {
+      property: "contentHash",
+      expected: expected.contentHash,
+      actual: actual.mediaContentHash,
+    },
+  ] as const;
+  for (const comparison of comparisons) {
+    if (
+      comparison.expected !== undefined &&
+      comparison.expected !== comparison.actual
+    ) {
+      issues.push({
+        severity: "error",
+        code: `media.${comparison.property}-mismatch`,
+        message: `${expected.name} embedded media ${comparison.property} differs from DeckIR.`,
+        slideId,
+        slideNumber,
+        elementId: expected.id,
+        objectName: expected.name,
+        expected: comparison.expected,
+        actual: comparison.actual,
+      });
+      valid = false;
+    }
+  }
+  if (expected.captionSrc) {
+    valid =
+      verifyExpectedCaption(expected, actual, issues, slideId, slideNumber) && valid;
+  }
+  return valid;
+}
+
+function verifyExpectedCaption(
+  expected: ExpectedElement,
+  actual: InspectedObjectInternal,
+  issues: InspectionIssue[],
+  slideId: string,
+  slideNumber: number,
+): boolean {
+  if (!actual.captionTrackPresent) {
+    issues.push({
+      severity: "error",
+      code: "caption.missing-track",
+      message: `${expected.name} has captions in DeckIR but no p173:track in its PowerPoint picture.`,
+      slideId,
+      slideNumber,
+      elementId: expected.id,
+      objectName: expected.name,
+    });
+    return false;
+  }
+
+  let valid = true;
+  const comparisons = [
+    {
+      property: "contentHash",
+      expected: expected.captionContentHash,
+      actual: actual.captionContentHash,
+    },
+    {
+      property: "language",
+      expected: expected.captionLanguage,
+      actual: actual.captionLanguage,
+    },
+    {
+      property: "label",
+      expected: expected.captionLabel,
+      actual: actual.captionLabel,
+    },
+  ] as const;
+  for (const comparison of comparisons) {
+    if (
+      comparison.expected !== undefined &&
+      comparison.expected !== comparison.actual
+    ) {
+      issues.push({
+        severity: "error",
+        code: `caption.${comparison.property}-mismatch`,
+        message: `${expected.name} embedded caption ${comparison.property} differs from DeckIR.`,
+        slideId,
+        slideNumber,
+        elementId: expected.id,
+        objectName: expected.name,
+        expected: comparison.expected,
+        actual: comparison.actual,
+      });
+      valid = false;
+    }
+  }
+  return valid;
 }
 
 function verifyTextRuns(
@@ -618,6 +789,219 @@ function verifyChartRelationships(
   }
 }
 
+async function inspectMediaRelationships(
+  zip: JSZip,
+  slideFile: string,
+  objects: InspectedObjectInternal[],
+  relationships: Relationship[],
+  contentTypes: PackageContentTypes,
+  issues: InspectionIssue[],
+  slideId: string | undefined,
+  slideNumber: number,
+): Promise<void> {
+  for (const object of objects) {
+    if (object.nativeKind !== "video" && object.nativeKind !== "audio") {
+      continue;
+    }
+    await inspectCaptionRelationship(
+      zip,
+      slideFile,
+      object,
+      relationships,
+      contentTypes,
+      issues,
+      slideId,
+      slideNumber,
+    );
+    const relationship = relationships.find(
+      (candidate) => candidate.id === object.relationshipId,
+    );
+    const expectedRelationshipSuffix = `/${object.nativeKind}`;
+    if (!relationship?.type.endsWith(expectedRelationshipSuffix)) {
+      issues.push({
+        severity: "error",
+        code: "media.missing-relationship",
+        message: `${object.nativeKind} ${object.name} has no ${object.nativeKind} relationship.`,
+        slideId,
+        slideNumber,
+        objectName: object.name,
+        actual: object.relationshipId,
+      });
+      continue;
+    }
+
+    const target = resolveRelationshipTarget(slideFile, relationship.target);
+    object.mediaTarget = target;
+    object.mediaMimeType = mediaMimeType(target, object.nativeKind);
+    if (!object.mediaMimeType) {
+      issues.push({
+        severity: "error",
+        code: "media.unsupported-format",
+        message: `${object.nativeKind} ${object.name} uses an unsupported media format: ${target}`,
+        slideId,
+        slideNumber,
+        objectName: object.name,
+        actual: target,
+      });
+    }
+
+    const mediaPart = zip.file(target);
+    if (!mediaPart) {
+      issues.push({
+        severity: "error",
+        code: "media.missing-part",
+        message: `${object.nativeKind} ${object.name} relationship target is missing: ${target}`,
+        slideId,
+        slideNumber,
+        objectName: object.name,
+        actual: target,
+      });
+      continue;
+    }
+
+    const secondaryRelationship = relationships.find(
+      (candidate) =>
+        candidate.type ===
+          "http://schemas.microsoft.com/office/2007/relationships/media" &&
+        resolveRelationshipTarget(slideFile, candidate.target) === target,
+    );
+    if (!secondaryRelationship) {
+      issues.push({
+        severity: "error",
+        code: "media.missing-office-relationship",
+        message: `${object.nativeKind} ${object.name} has no Office media relationship.`,
+        slideId,
+        slideNumber,
+        objectName: object.name,
+        actual: target,
+      });
+    }
+
+    const bytes = await mediaPart.async("uint8array");
+    object.mediaByteLength = bytes.byteLength;
+    object.mediaContentHash = createHash("sha256").update(bytes).digest("hex");
+  }
+}
+
+async function inspectCaptionRelationship(
+  zip: JSZip,
+  slideFile: string,
+  object: InspectedObjectInternal,
+  relationships: Relationship[],
+  contentTypes: PackageContentTypes,
+  issues: InspectionIssue[],
+  slideId: string | undefined,
+  slideNumber: number,
+): Promise<void> {
+  if (!object.captionTrackPresent) {
+    return;
+  }
+  const elementId = elementIdFromObjectName(object.name, slideId);
+  if (!object.captionRelationshipId) {
+    issues.push({
+      severity: "error",
+      code: "caption.missing-embed",
+      message: `${object.nativeKind} ${object.name} has a p173:track without r:embed.`,
+      slideId,
+      slideNumber,
+      elementId,
+      objectName: object.name,
+    });
+    return;
+  }
+
+  const relationship = relationships.find(
+    (candidate) => candidate.id === object.captionRelationshipId,
+  );
+  object.captionRelationshipType = relationship?.type;
+  if (!relationship) {
+    issues.push({
+      severity: "error",
+      code: "caption.missing-relationship",
+      message: `${object.nativeKind} ${object.name} caption r:embed has no slide relationship.`,
+      slideId,
+      slideNumber,
+      elementId,
+      objectName: object.name,
+      actual: object.captionRelationshipId,
+    });
+    return;
+  }
+  if (relationship.type !== TRACK_RELATIONSHIP_URI) {
+    issues.push({
+      severity: "error",
+      code: "caption.relationship-type-mismatch",
+      message: `${object.nativeKind} ${object.name} caption relationship does not use the PowerPoint track relationship type.`,
+      slideId,
+      slideNumber,
+      elementId,
+      objectName: object.name,
+      expected: TRACK_RELATIONSHIP_URI,
+      actual: relationship.type,
+    });
+  }
+
+  const target = resolveRelationshipTarget(slideFile, relationship.target);
+  object.captionTarget = target;
+  object.captionMimeType = contentTypeForPart(contentTypes, target);
+  if (object.captionMimeType !== "text/vtt") {
+    issues.push({
+      severity: "error",
+      code: "caption.content-type-mismatch",
+      message: `${object.nativeKind} ${object.name} caption part does not use text/vtt.`,
+      slideId,
+      slideNumber,
+      elementId,
+      objectName: object.name,
+      expected: "text/vtt",
+      actual: object.captionMimeType,
+    });
+  }
+
+  const captionPart = zip.file(target);
+  if (!captionPart) {
+    issues.push({
+      severity: "error",
+      code: "caption.missing-part",
+      message: `${object.nativeKind} ${object.name} caption relationship target is missing: ${target}`,
+      slideId,
+      slideNumber,
+      elementId,
+      objectName: object.name,
+      actual: target,
+    });
+    return;
+  }
+  const bytes = await captionPart.async("uint8array");
+  object.captionContentHash = createHash("sha256").update(bytes).digest("hex");
+}
+
+function elementIdFromObjectName(
+  objectName: string,
+  slideId: string | undefined,
+): string | undefined {
+  if (!slideId) return undefined;
+  const prefix = `lt:${slideId}:`;
+  return objectName.startsWith(prefix) ? objectName.slice(prefix.length) : undefined;
+}
+
+function mediaMimeType(
+  target: string,
+  kind: "video" | "audio",
+): InspectedObject["mediaMimeType"] {
+  const extension = path.extname(target).toLowerCase();
+  if (kind === "video" && extension === ".mp4") {
+    return "video/mp4";
+  }
+  if (kind === "audio" && extension === ".m4a") {
+    return "audio/mp4";
+  }
+  if (kind === "audio" && extension === ".mp3") {
+    return "audio/mpeg";
+  }
+  return undefined;
+}
+
 function verifyDuplicateNames(
   objects: InspectedObjectInternal[],
   issues: InspectionIssue[],
@@ -699,7 +1083,11 @@ function verifyFullSlideImages(
   const threshold = options.fullSlideImageThreshold ?? 0.95;
   const expectedByName = new Map(expected.map((element) => [element.name, element]));
   for (const object of objects) {
-    if (object.nativeKind !== "image" || !object.logicalFrame) {
+    if (
+      object.nativeKind !== "image" ||
+      !object.logicalFrame ||
+      object.name.startsWith("background:")
+    ) {
       continue;
     }
     const frame = object.logicalFrame;
@@ -765,6 +1153,61 @@ async function readRelationships(
     });
     return [];
   }
+}
+
+async function readPackageContentTypes(
+  zip: JSZip,
+  issues: InspectionIssue[],
+): Promise<PackageContentTypes> {
+  const contentTypes: PackageContentTypes = {
+    defaults: new Map(),
+    overrides: new Map(),
+  };
+  const file = zip.file("[Content_Types].xml");
+  if (!file) {
+    return contentTypes;
+  }
+  try {
+    const document = asRecord(parser.parse(await file.async("string")));
+    const root = asRecord(document.Types);
+    for (const candidate of asArray(root.Default)) {
+      const entry = asRecord(candidate);
+      const extension = stringValue(entry["@_Extension"]).toLowerCase();
+      const contentType = stringValue(entry["@_ContentType"]);
+      if (extension && contentType) {
+        contentTypes.defaults.set(extension, contentType);
+      }
+    }
+    for (const candidate of asArray(root.Override)) {
+      const entry = asRecord(candidate);
+      const partName = stringValue(entry["@_PartName"]);
+      const contentType = stringValue(entry["@_ContentType"]);
+      if (partName && contentType) {
+        contentTypes.overrides.set(
+          partName.startsWith("/") ? partName : `/${partName}`,
+          contentType,
+        );
+      }
+    }
+  } catch (error) {
+    issues.push({
+      severity: "error",
+      code: "package.invalid-content-types",
+      message: `Unable to parse [Content_Types].xml: ${errorMessage(error)}`,
+    });
+  }
+  return contentTypes;
+}
+
+function contentTypeForPart(
+  contentTypes: PackageContentTypes,
+  target: string,
+): string | undefined {
+  const normalizedTarget = target.startsWith("/") ? target : `/${target}`;
+  const override = contentTypes.overrides.get(normalizedTarget);
+  if (override) return override;
+  const extension = path.posix.extname(target).slice(1).toLowerCase();
+  return extension ? contentTypes.defaults.get(extension) : undefined;
 }
 
 async function readNotesText(
@@ -868,6 +1311,13 @@ function flattenExpectedElements(
       role: stringValue(element.role) || undefined,
       text,
       textRuns: expectedTextRuns(element, type, defaultFont, canvas),
+      mimeType: stringValue(element.mimeType) || undefined,
+      byteLength: numberValue(element.byteLength),
+      contentHash: stringValue(element.contentHash) || undefined,
+      captionSrc: stringValue(element.captionSrc) || undefined,
+      captionContentHash: stringValue(element.captionContentHash) || undefined,
+      captionLanguage: stringValue(element.captionLanguage) || undefined,
+      captionLabel: stringValue(element.captionLabel) || undefined,
     });
   }
   return result;
@@ -1052,9 +1502,17 @@ function expectedNativeKind(type: string): NativeObjectKind {
   if (type === "icon") {
     return "image";
   }
-  return ["text", "shape", "line", "connector", "image", "table", "chart"].includes(
-    type,
-  )
+  return [
+    "text",
+    "shape",
+    "line",
+    "connector",
+    "image",
+    "video",
+    "audio",
+    "table",
+    "chart",
+  ].includes(type)
     ? (type as NativeObjectKind)
     : "unknown";
 }
@@ -1153,6 +1611,12 @@ function createSemanticHash(slides: InspectedSlide[]): string {
         rotation: object.rotation,
         text: object.text,
         textRuns: object.textRuns,
+        captionRelationshipType: object.captionRelationshipType,
+        captionTarget: object.captionTarget,
+        captionMimeType: object.captionMimeType,
+        captionContentHash: object.captionContentHash,
+        captionLanguage: object.captionLanguage,
+        captionLabel: object.captionLabel,
       }))
       .sort((left, right) => left.name.localeCompare(right.name)),
     notesText: slide.notesText,
@@ -1246,7 +1710,11 @@ function collectValuesForKey(candidate: unknown, key: string): unknown[] {
 }
 
 function textValue(value: unknown): string {
-  if (typeof value === "string" || typeof value === "number") {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
     return String(value);
   }
   const record = asRecord(value);

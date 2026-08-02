@@ -371,11 +371,14 @@ describe("Studio browser workflow", () => {
     await page.goto(`${baseUrl}/presenter/${DECK_ID}`, {
       waitUntil: "networkidle",
     });
-    expect(page.url()).toBe(`${baseUrl}/edit/${DECK_ID}`);
-    expect(await page.locator(".studio-presenter").count()).toBe(0);
+    expect(page.url()).toBe(`${baseUrl}/presenter/${DECK_ID}`);
+    expect(await page.locator(".studio-presenter").count()).toBe(1);
     expect((await page.locator("body").innerText()).includes(NOTES_SENTINEL)).toBe(
-      false,
+      true,
     );
+    expect(await page.getByText(SOURCE_LABEL).isVisible()).toBe(true);
+
+    await page.goto(`${baseUrl}/edit/${DECK_ID}`, { waitUntil: "networkidle" });
     expect(
       await page.getByRole("navigation", { name: "スライド一覧" }).isVisible(),
     ).toBe(true);

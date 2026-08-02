@@ -23,13 +23,22 @@ describe("Studio routes", () => {
     ["/deck/quarterly/intro", "intro"],
     ["/debug/quarterly/intro", "intro"],
     ["/overview/quarterly", undefined],
-    ["/presenter/quarterly", undefined],
   ])("normalizes the legacy route %s to edit", (pathname, slideId) => {
     expect(parseStudioRoute(pathname)).toEqual({
       kind: "edit",
       deckId: "quarterly",
       ...(slideId ? { slideId } : {}),
     });
+  });
+
+  it("keeps the presenter route and selected slide", () => {
+    const route = parseStudioRoute("/presenter/quarterly/closing");
+    expect(route).toEqual({
+      kind: "presenter",
+      deckId: "quarterly",
+      slideId: "closing",
+    });
+    expect(routePath(route)).toBe("/presenter/quarterly/closing");
   });
 
   it("keeps the print-only route", () => {

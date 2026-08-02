@@ -343,7 +343,9 @@ export async function inspectPdf(
   const size = firstPage.getSize();
   const toolchain = await requirePopplerTools(options);
   const [textResult, fontResult] = await Promise.all([
-    runPoppler(toolchain.pdftotext.executable, [path, "-"]),
+    // Chromium may emit fallback-font glyphs out of visual order. Raw mode follows
+    // the PDF content stream, which preserves the authored paragraph order.
+    runPoppler(toolchain.pdftotext.executable, ["-raw", path, "-"]),
     runPoppler(toolchain.pdffonts.executable, [path]),
   ]);
   const fontRecords = parsePdfFonts(fontResult);
@@ -503,7 +505,7 @@ export async function exportPdf(options: PdfExportOptions): Promise<PdfInspectio
       throw error;
     }
     throw new PdfExportError(
-      "Failed to export PDF. Run `mise run setup` followed by `mise run doctor` and ensure Playwright Chromium is installed.",
+      "Failed to export PDF. Run `slide setup` followed by `slide doctor` and ensure Playwright Chromium and Poppler are installed.",
       error,
     );
   } finally {

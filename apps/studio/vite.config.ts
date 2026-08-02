@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import { deckApiPlugin } from "./server/deck-api.js";
+import { deckApiPlugin } from "./server/vite-plugin.js";
 
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 

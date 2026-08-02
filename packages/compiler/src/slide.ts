@@ -12,6 +12,7 @@ import type {
   ThemeDefinition,
 } from "@livetoon/slide-theme-default";
 
+import { compileImageBackground } from "./background.js";
 import { compileComponent } from "./components.js";
 import { createDiagnostic } from "./diagnostics.js";
 import { markdownNodesToParagraphs, markdownToPlainText } from "./markdown.js";
@@ -59,7 +60,7 @@ function defaultSlotForComponent(
   componentName: string | null | undefined,
   layout: LayoutDefinition,
 ): string | undefined {
-  if (componentName === "Image" && layout.slots.image) {
+  if ((componentName === "Image" || componentName === "Video") && layout.slots.image) {
     return "image";
   }
   if (componentName === "Chart" && layout.slots.chart) {
@@ -177,7 +178,9 @@ async function compileSlot(
   }
 
   if (markdownNodes.length > 0) {
-    const conversion = markdownNodesToParagraphs(markdownNodes, sourcePath, slideId);
+    const conversion = markdownNodesToParagraphs(markdownNodes, sourcePath, slideId, {
+      codeFontFace: theme.ir.fonts.code.family,
+    });
     diagnostics.push(...conversion.diagnostics);
     if (conversion.paragraphs.length > 0) {
       const textSourceNode = sourceSpanForNodes(markdownNodes) ?? sourceNode;
@@ -358,6 +361,7 @@ export async function compileSlideDocument(
         titleNodes.map((node) => ({ ...node, type: "paragraph" })),
         sourcePath,
         frontmatter.id,
+        { codeFontFace: theme.ir.fonts.code.family },
       );
       diagnostics.push(...conversion.diagnostics);
       elements.push(
@@ -395,6 +399,7 @@ export async function compileSlideDocument(
         bodyNodes,
         sourcePath,
         frontmatter.id,
+        { codeFontFace: theme.ir.fonts.code.family },
       );
       diagnostics.push(...conversion.diagnostics);
       if (conversion.paragraphs.length > 0) {
@@ -431,12 +436,23 @@ export async function compileSlideDocument(
   }
   elements.push(...explicitElements);
 
+  const background = frontmatter.background
+    ? await compileImageBackground({
+        input: frontmatter.background,
+        sourcePath,
+        deckDirectory,
+        slideId: frontmatter.id,
+        diagnostics,
+        embeddedAssets,
+      })
+    : layout.background;
+
   const slide: SlideIR = {
     id: frontmatter.id,
     sourcePath,
     layoutId: layout.id,
     masterId: frontmatter.masterId ?? layout.masterId,
-    background: layout.background,
+    background,
     elements,
     notes: {
       markdown: frontmatter.notes,

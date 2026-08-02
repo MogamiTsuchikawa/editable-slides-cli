@@ -12,6 +12,7 @@ import { DeckMdxConfigSchema } from "./config.js";
 import { createDiagnostic, DeckCompileError } from "./diagnostics.js";
 import type { AstNode } from "./mdx-ast.js";
 import { parseComponentProps, sourceLocationForNode } from "./mdx-ast.js";
+import { MAX_EMBEDDED_ASSET_BYTES, validateEmbeddedAsset } from "./security.js";
 import type { DeckMdxConfig, EmbeddedAsset, SlideFrontmatter } from "./types.js";
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
@@ -202,6 +203,20 @@ function decodeBase64(
     return undefined;
   }
 
+  const padding = compact.endsWith("==") ? 2 : compact.endsWith("=") ? 1 : 0;
+  const estimatedBytes = Math.floor((compact.length * 3) / 4) - padding;
+  if (estimatedBytes > MAX_EMBEDDED_ASSET_BYTES) {
+    diagnostics.push(
+      createDiagnostic({
+        severity: "error",
+        code: "ASSET_SIZE_LIMIT_EXCEEDED",
+        message: `Embedded asset is approximately ${estimatedBytes} bytes; the limit is ${MAX_EMBEDDED_ASSET_BYTES} bytes`,
+        sourceLocation: sourceLocationForNode(node, sourcePath),
+      }),
+    );
+    return undefined;
+  }
+
   const data = Buffer.from(compact, "base64");
   const normalizedInput = compact.replace(/=+$/, "");
   const normalizedDecoded = data.toString("base64").replace(/=+$/, "");
@@ -321,6 +336,20 @@ function parseAssets(
     }
     const data = decodeBase64(text, child, sourcePath, diagnostics);
     if (!data) {
+      continue;
+    }
+    const securityIssues = validateEmbeddedAsset(data, mimeType);
+    for (const issue of securityIssues) {
+      diagnostics.push(
+        createDiagnostic({
+          severity: "error",
+          code: issue.code,
+          message: `Asset "${id}": ${issue.message}`,
+          sourceLocation: sourceLocationForNode(child, sourcePath),
+        }),
+      );
+    }
+    if (securityIssues.length > 0) {
       continue;
     }
     const canonicalBase64 = data.toString("base64");

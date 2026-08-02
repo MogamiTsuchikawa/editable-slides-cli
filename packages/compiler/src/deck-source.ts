@@ -1,9 +1,10 @@
-import { access, readFile } from "node:fs/promises";
+import { access } from "node:fs/promises";
 import path from "node:path";
 
 import { readDeckConfig } from "./config.js";
 import { parseDeckMdx } from "./deck-mdx.js";
 import { createDiagnostic, DeckCompileError } from "./diagnostics.js";
+import { readSecureDeckEntryFile, SecurityValidationError } from "./security.js";
 import type { DeckConfig, DeckMdxConfig } from "./types.js";
 
 export async function resolveDeckEntry(deckDirectory: string): Promise<string> {
@@ -40,11 +41,25 @@ export async function readDeckSourceConfig(
   }
 
   try {
-    const source = await readFile(absoluteEntryPath, "utf8");
+    const source = (await readSecureDeckEntryFile(absoluteEntryPath)).data.toString(
+      "utf8",
+    );
     return parseDeckMdx(source, absoluteEntryPath).config;
   } catch (error) {
     if (error instanceof DeckCompileError) {
       throw error;
+    }
+    if (error instanceof SecurityValidationError) {
+      throw new DeckCompileError(
+        error.issues.map((issue) =>
+          createDiagnostic({
+            severity: "error",
+            code: issue.code,
+            message: `Deck source: ${issue.message}`,
+            sourceLocation: { file: absoluteEntryPath, line: 1, column: 1 },
+          }),
+        ),
+      );
     }
     throw new DeckCompileError([
       createDiagnostic({

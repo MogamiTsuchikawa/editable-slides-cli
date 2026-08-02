@@ -12,8 +12,9 @@ import {
 } from "react";
 import Moveable from "react-moveable";
 import Selecto from "react-selecto";
-import { saveOverrides } from "./api.js";
+import { type DeckSourceState, saveOverrides } from "./api.js";
 import { createEditHistory, historyReducer } from "./history.js";
+import { MetadataPanel } from "./metadata-panel.js";
 import {
   type FrameOverride,
   findOrphanOverrides,
@@ -23,6 +24,7 @@ import {
   setFrameOverride,
   setFrameOverrides,
 } from "./overrides.js";
+import { StructuredDataPanel } from "./structured-data-panel.js";
 import { isTextEditorTarget, selectedTextElement } from "./text-edit.js";
 import { TextEditPanel } from "./text-edit-panel.js";
 
@@ -56,12 +58,16 @@ export function EditorView({
   initialDocument,
   onDocumentSaved,
   onTextSaved,
+  onSourceChanged,
+  sourceState,
 }: {
   deck: DeckIR;
   slide: SlideIR;
   initialDocument: OverrideDocument;
   onDocumentSaved: (document: OverrideDocument) => void;
   onTextSaved?: () => void;
+  onSourceChanged: (state: DeckSourceState) => void;
+  sourceState?: DeckSourceState;
 }) {
   const [history, dispatch] = useReducer(
     historyReducer,
@@ -93,6 +99,11 @@ export function EditorView({
     () => selectedTextElement(elements, selectedIds),
     [elements, selectedIds],
   );
+  const structuredElement = useMemo(() => {
+    if (selectedIds.size !== 1) return undefined;
+    const element = elementById.get([...selectedIds][0] ?? "");
+    return element?.type === "table" || element?.type === "chart" ? element : undefined;
+  }, [elementById, selectedIds]);
 
   useEffect(() => {
     documentRef.current = history.present;
@@ -556,6 +567,12 @@ export function EditorView({
             Bring forward
           </button>
         </div>
+        <MetadataPanel
+          deckId={deck.metadata.id}
+          onSaved={onSourceChanged}
+          slide={slide}
+          sourceState={sourceState}
+        />
         {editableTextElement ? (
           <TextEditPanel
             deckId={deck.metadata.id}
@@ -563,6 +580,15 @@ export function EditorView({
             {...(onTextSaved ? { onTextSaved } : {})}
             key={editableTextElement.id}
             slideId={slide.id}
+          />
+        ) : null}
+        {structuredElement ? (
+          <StructuredDataPanel
+            deckId={deck.metadata.id}
+            element={structuredElement}
+            onSaved={onSourceChanged}
+            slideId={slide.id}
+            sourceState={sourceState}
           />
         ) : null}
         <section className="studio-selection-list">

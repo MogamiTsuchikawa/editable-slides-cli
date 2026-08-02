@@ -2,19 +2,30 @@
   "name": "@livetoon/slide-cli",
   "version": "0.1.0",
   "private": true,
+  "description": "CLI for creating, previewing, validating, and exporting Livetoon Slide decks",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "bin": {
-    "slide": "./dist/index.js"
+    "slide": "./dist/bin/index.js"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node scripts/build-package.mjs",
+    "build:template-archive": "node scripts/build-template-archive.mjs",
     "clean": "rm -rf dist",
+    "prepack": "npm run build:core --prefix ../.. && npm run build",
+    "test:package": "node scripts/smoke-package.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
+    "playwright": "1.62.0"
+  },
+  "devDependencies": {
     "@livetoon/slide-compiler": "*",
     "@livetoon/slide-deck-ir": "*",
     "@livetoon/slide-exporter-pdf": "*",
@@ -22,13 +33,15 @@
     "@livetoon/slide-renderer-pptx": "*",
     "@livetoon/slide-theme-company": "*",
     "@livetoon/slide-theme-default": "*",
-    "chokidar": "^4.0.3",
-    "playwright": "^1.62.0",
-    "yaml": "^2.8.1"
-  },
-  "devDependencies": {
     "@types/node": "^24.10.0",
+    "@types/yauzl": "3.4.0",
+    "chokidar": "^4.0.3",
+    "esbuild": "^0.28.1",
+    "jszip": "3.10.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.10"
+    "vite": "^7.3.6",
+    "vitest": "^4.1.10",
+    "yaml": "^2.8.1",
+    "yauzl": "3.4.0"
   }
 }

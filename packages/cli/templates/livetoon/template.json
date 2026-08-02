@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "livetoon",
+  "name": "Livetoon",
+  "version": "1.0.0",
+  "entry": "deck.mdx",
+  "theme": "company",
+  "description": "Livetoonテーマの基本構成から資料を作成します。"
+}

@@ -1,4 +1,10 @@
 export {
+  type ChartContractIssue,
+  type ChartContractIssueCode,
+  type ChartContractResult,
+  validateChartContract,
+} from "./chart-contract.js";
+export {
   frameToPptx,
   logicalToPptxX,
   logicalToPptxY,
@@ -7,6 +13,8 @@ export {
   pptxToLogicalY,
 } from "./coordinates.js";
 export {
+  AudioElementIRSchema,
+  BackgroundIRSchema,
   ChartElementIRSchema,
   ConnectorElementIRSchema,
   DeckIRSchema,
@@ -31,5 +39,20 @@ export {
   TextElementIRSchema,
   TextRunIRSchema,
   TextStyleIRSchema,
+  VideoElementIRSchema,
 } from "./schema.js";
+export {
+  MAX_TABLE_CELL_SPAN,
+  MAX_TABLE_GRID_COLUMNS,
+  scaleTableDimensions,
+  TABLE_DIMENSION_EPSILON,
+  type TableGridCellLike,
+  type TableGridRowLike,
+  type TableGridValidationIssue,
+  type TableGridValidationIssueCode,
+  type TableGridValidationResult,
+  tableDimensionsMatch,
+  tableDimensionTotal,
+  validateTableGrid,
+} from "./table-grid.js";
 export * from "./types.js";

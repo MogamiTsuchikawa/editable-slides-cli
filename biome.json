@@ -5,6 +5,7 @@
       "**",
       "!**/dist",
       "!**/coverage",
+      "!**/.livetoon",
       "!**/node_modules",
       "!dist",
       "!tmp",

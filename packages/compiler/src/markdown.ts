@@ -6,6 +6,7 @@ import { unified } from "unified";
 import { createDiagnostic } from "./diagnostics.js";
 import type { AstNode } from "./mdx-ast.js";
 import { sourceLocationForNode } from "./mdx-ast.js";
+import { isSafeHyperlink } from "./security.js";
 
 interface RunMarks {
   bold?: boolean;
@@ -41,6 +42,7 @@ function inlineRuns(
   diagnostics: Diagnostic[],
   sourcePath: string,
   slideId: string,
+  codeFontFace: string,
 ): TextRunIR[] {
   const runs: TextRunIR[] = [];
   for (const node of nodes) {
@@ -56,6 +58,7 @@ function inlineRuns(
             diagnostics,
             sourcePath,
             slideId,
+            codeFontFace,
           ),
         );
         break;
@@ -67,17 +70,33 @@ function inlineRuns(
             diagnostics,
             sourcePath,
             slideId,
+            codeFontFace,
           ),
         );
         break;
       case "link":
+        if (!node.url || !isSafeHyperlink(node.url)) {
+          diagnostics.push(
+            createDiagnostic({
+              severity: "error",
+              code: "MARKDOWN_LINK_URL_UNSAFE",
+              message:
+                "Markdown links must use http, https or mailto without embedded credentials",
+              sourceLocation: sourceLocationForNode(node, sourcePath),
+              slideId,
+            }),
+          );
+        }
         runs.push(
           ...inlineRuns(
             node.children ?? [],
-            { ...marks, href: node.url },
+            node.url && isSafeHyperlink(node.url)
+              ? { ...marks, href: node.url }
+              : marks,
             diagnostics,
             sourcePath,
             slideId,
+            codeFontFace,
           ),
         );
         break;
@@ -85,7 +104,7 @@ function inlineRuns(
         runs.push(
           createRun(node.value ?? "", {
             ...marks,
-            fontFace: "Noto Sans Mono",
+            fontFace: codeFontFace,
           }),
         );
         break;
@@ -112,6 +131,7 @@ function paragraphFromNode(
   diagnostics: Diagnostic[],
   sourcePath: string,
   slideId: string,
+  codeFontFace: string,
   options: {
     bold?: boolean;
     level?: number;
@@ -126,6 +146,7 @@ function paragraphFromNode(
       diagnostics,
       sourcePath,
       slideId,
+      codeFontFace,
     ),
   };
   if (options.level !== undefined) {
@@ -145,6 +166,7 @@ function listParagraphs(
   diagnostics: Diagnostic[],
   sourcePath: string,
   slideId: string,
+  codeFontFace: string,
   level: number,
 ): ParagraphIR[] {
   const paragraphs: ParagraphIR[] = [];
@@ -152,7 +174,7 @@ function listParagraphs(
     for (const child of item.children ?? []) {
       if (child.type === "paragraph") {
         paragraphs.push(
-          paragraphFromNode(child, diagnostics, sourcePath, slideId, {
+          paragraphFromNode(child, diagnostics, sourcePath, slideId, codeFontFace, {
             level,
             bullet: true,
             ordered: node.ordered === true,
@@ -160,7 +182,14 @@ function listParagraphs(
         );
       } else if (child.type === "list") {
         paragraphs.push(
-          ...listParagraphs(child, diagnostics, sourcePath, slideId, level + 1),
+          ...listParagraphs(
+            child,
+            diagnostics,
+            sourcePath,
+            slideId,
+            codeFontFace,
+            level + 1,
+          ),
         );
       } else {
         diagnostics.push(
@@ -187,31 +216,37 @@ export function markdownNodesToParagraphs(
   nodes: AstNode[],
   sourcePath: string,
   slideId: string,
+  options: { codeFontFace?: string } = {},
 ): MarkdownConversion {
   const paragraphs: ParagraphIR[] = [];
   const diagnostics: Diagnostic[] = [];
+  const codeFontFace = options.codeFontFace ?? "Noto Sans Mono";
 
   for (const node of nodes) {
     switch (node.type) {
       case "paragraph":
-        paragraphs.push(paragraphFromNode(node, diagnostics, sourcePath, slideId));
+        paragraphs.push(
+          paragraphFromNode(node, diagnostics, sourcePath, slideId, codeFontFace),
+        );
         break;
       case "heading":
         paragraphs.push(
-          paragraphFromNode(node, diagnostics, sourcePath, slideId, {
+          paragraphFromNode(node, diagnostics, sourcePath, slideId, codeFontFace, {
             bold: true,
           }),
         );
         break;
       case "list":
-        paragraphs.push(...listParagraphs(node, diagnostics, sourcePath, slideId, 0));
+        paragraphs.push(
+          ...listParagraphs(node, diagnostics, sourcePath, slideId, codeFontFace, 0),
+        );
         break;
       case "code":
         paragraphs.push({
           runs: [
             {
               text: node.value ?? "",
-              fontFace: "Noto Sans Mono",
+              fontFace: codeFontFace,
             },
           ],
         });

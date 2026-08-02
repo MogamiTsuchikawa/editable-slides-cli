@@ -30,6 +30,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@livetoon/slide-theme-company": "*",
     "@types/mdast": "^4.0.4",
     "@types/node": "^24.10.0",
     "typescript": "^5.9.3",

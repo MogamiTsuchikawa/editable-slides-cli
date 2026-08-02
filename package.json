@@ -22,7 +22,8 @@
   "scripts": {
     "build:core": "npm run build -w @livetoon/slide-deck-ir && npm run build -w @livetoon/slide-theme-default && npm run build -w @livetoon/slide-theme-company && npm run build -w @livetoon/slide-compiler && npm run build -w @livetoon/slide-renderer-react && npm run build -w @livetoon/slide-renderer-pptx && npm run build -w @livetoon/slide-exporter-pdf && npm run build -w @livetoon/slide-qa-pptx",
     "build:runtime": "npm run build:core && npm run build -w @livetoon/slide-cli",
-    "build": "npm run build:runtime && npm run build -w @livetoon/slide-studio",
+    "build": "npm run build:runtime",
+    "build:template": "npm run build:template-archive -w @livetoon/slide-cli",
     "clean": "npm run clean --workspaces --if-present",
     "format": "biome format --write .",
     "lint": "biome check .",
@@ -31,9 +32,11 @@
     "test:fixtures": "npm run test -w @livetoon/slide-compiler",
     "test:pptx": "npm run test -w @livetoon/slide-qa-pptx",
     "test:pdf": "npm run test -w @livetoon/slide-exporter-pdf",
+    "test:package": "npm run build:runtime && npm run test:package -w @livetoon/slide-cli",
     "test:visual": "npm run build -w @livetoon/slide-deck-ir --silent && npm run build -w @livetoon/slide-theme-default --silent && npm run test:e2e -w @livetoon/slide-studio",
-    "qa": "npm run lint && npm run typecheck && npm run test",
-    "slide": "npm run build:runtime --silent && node packages/cli/dist/index.js"
+    "check:release": "node scripts/check-release.mjs",
+    "qa": "npm run check:release && npm run lint && npm run typecheck && npm run test",
+    "slide": "npm run build:runtime --silent && node packages/cli/dist/bin/index.js"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.6",

@@ -1,3 +1,7 @@
+import { createHash } from "node:crypto";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { DeckIR, ElementBase, TextStyleIR } from "@livetoon/slide-deck-ir";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
@@ -275,6 +279,81 @@ function coreDeck(): DeckIR {
   };
 }
 
+async function captionMediaFixture(): Promise<{
+  directory: string;
+  deck: DeckIR;
+  videoCaptionBytes: Buffer;
+  audioCaptionBytes: Buffer;
+}> {
+  const directory = await mkdtemp(join(tmpdir(), "livetoon-qa-captions-"));
+  const videoPath = join(directory, "sample.mp4");
+  const audioPath = join(directory, "sample.m4a");
+  const videoCaptionPath = join(directory, "sample-video.ja.vtt");
+  const audioCaptionPath = join(directory, "sample-audio.en.vtt");
+  const videoBytes = Buffer.from("00000018667479706d70343200000000", "hex");
+  const audioBytes = Buffer.from("00000018667479704d34412000000000", "hex");
+  const videoCaptionBytes = Buffer.from(
+    "WEBVTT\n\n00:00.000 --> 00:01.500\n動画字幕です。\n",
+    "utf8",
+  );
+  const audioCaptionBytes = Buffer.from(
+    "WEBVTT\n\n00:00.000 --> 00:01.250\nAudio captions.\n",
+    "utf8",
+  );
+  await Promise.all([
+    writeFile(videoPath, videoBytes),
+    writeFile(audioPath, audioBytes),
+    writeFile(videoCaptionPath, videoCaptionBytes),
+    writeFile(audioCaptionPath, audioCaptionBytes),
+  ]);
+
+  const deck = coreDeck();
+  const slide = deck.slides[0];
+  if (!slide) {
+    throw new Error("fixture slide is missing");
+  }
+  slide.elements = [
+    {
+      ...base("caption-video", { x: 80, y: 100, w: 800, h: 450 }),
+      type: "video",
+      src: videoPath,
+      contentHash: createHash("sha256").update(videoBytes).digest("hex"),
+      mimeType: "video/mp4",
+      byteLength: videoBytes.byteLength,
+      posterSrc: PIXEL_PNG,
+      posterMimeType: "image/png",
+      captionSrc: videoCaptionPath,
+      captionContentHash: createHash("sha256").update(videoCaptionBytes).digest("hex"),
+      captionMimeType: "text/vtt",
+      captionLanguage: "ja-JP",
+      captionLabel: "日本語字幕",
+      fit: "contain",
+      alt: "字幕付き製品デモ動画",
+    },
+    {
+      ...base("caption-audio", { x: 80, y: 600, w: 800, h: 120 }),
+      type: "audio",
+      src: audioPath,
+      contentHash: createHash("sha256").update(audioBytes).digest("hex"),
+      mimeType: "audio/mp4",
+      byteLength: audioBytes.byteLength,
+      captionSrc: audioCaptionPath,
+      captionContentHash: createHash("sha256").update(audioCaptionBytes).digest("hex"),
+      captionMimeType: "text/vtt",
+      captionLanguage: "en-US",
+      captionLabel: "English captions",
+      transcript: "字幕付き音声",
+    },
+  ];
+  slide.notes = { markdown: "", plainText: "", sources: [] };
+  return { directory, deck, videoCaptionBytes, audioCaptionBytes };
+}
+
+function relationshipElementPattern(relationshipId: string): RegExp {
+  const escaped = relationshipId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`<Relationship\\b(?=[^>]*\\bId="${escaped}")[^>]*/>`, "g");
+}
+
 describe("qa-pptx", () => {
   it("accepts all core DeckIR components as native editable OOXML", async () => {
     const deck = coreDeck();
@@ -302,6 +381,385 @@ describe("qa-pptx", () => {
       ]),
     );
     expect(report.slides[0]?.notesText).toContain("[Sources]");
+  });
+
+  it("preserves boolean text after merged table cells", async () => {
+    const deck = coreDeck();
+    const slide = deck.slides[0];
+    if (!slide) {
+      throw new Error("fixture slide is missing");
+    }
+    slide.elements = [
+      {
+        ...base("merged-table", { x: 80, y: 100, w: 900, h: 360 }),
+        type: "table",
+        columnWidths: [300, 300, 300],
+        rows: [
+          {
+            cells: [
+              {
+                paragraphs: [{ runs: [{ text: "区分" }] }],
+                rowSpan: 2,
+              },
+              { paragraphs: [{ runs: [{ text: "状態" }] }] },
+              { paragraphs: [{ runs: [{ text: "true" }] }], value: true },
+            ],
+          },
+          {
+            cells: [
+              { paragraphs: [{ runs: [{ text: "確認" }] }] },
+              { paragraphs: [{ runs: [{ text: "false" }] }], value: false },
+            ],
+          },
+          {
+            cells: [
+              {
+                paragraphs: [{ runs: [{ text: "まとめ" }] }],
+                colSpan: 2,
+              },
+              { paragraphs: [{ runs: [{ text: "true" }] }], value: true },
+            ],
+          },
+        ],
+        style: {
+          border: { color: "#D0D0D0", width: 1 },
+          headerFill: { type: "solid", color: "#FFFFFF" },
+          bodyFill: { type: "solid", color: "#FFFFFF" },
+          text: bodyStyle,
+        },
+      },
+    ];
+    slide.notes = { markdown: "", plainText: "", sources: [] };
+
+    const rendered = await renderPptx(deck, { strictEditable: true });
+    const report = await inspectPptx(rendered.data, deck, {
+      strictEditable: true,
+    });
+
+    expect(report.valid, JSON.stringify(report.issues, null, 2)).toBe(true);
+    expect(report.slides[0]?.objects[0]?.text).toContain("true");
+    expect(report.slides[0]?.objects[0]?.text).toContain("false");
+  });
+
+  it("accepts a declared full-slide image background", async () => {
+    const deck = coreDeck();
+    const slide = deck.slides[0];
+    if (!slide) {
+      throw new Error("fixture slide is missing");
+    }
+    slide.background = {
+      type: "image",
+      src: PIXEL_PNG,
+      mimeType: "image/png",
+      fit: "cover",
+      focalPosition: { x: 0.25, y: 0.75 },
+    };
+
+    const rendered = await renderPptx(deck, { strictEditable: true });
+    const report = await inspectPptx(rendered.data, deck, {
+      strictEditable: true,
+    });
+
+    expect(report.valid, JSON.stringify(report.issues, null, 2)).toBe(true);
+    expect(report.slides[0]?.objects).toContainEqual(
+      expect.objectContaining({
+        name: "background:gallery",
+        nativeKind: "image",
+      }),
+    );
+  });
+
+  it("identifies embedded video and audio and verifies their bytes", async () => {
+    const fixtureDirectory = await mkdtemp(join(tmpdir(), "livetoon-qa-media-"));
+    const videoPath = join(fixtureDirectory, "sample.mp4");
+    const audioPath = join(fixtureDirectory, "sample.m4a");
+    const videoBytes = Buffer.from("00000018667479706d70343200000000", "hex");
+    const audioBytes = Buffer.from("00000018667479704d34412000000000", "hex");
+
+    try {
+      await Promise.all([
+        writeFile(videoPath, videoBytes),
+        writeFile(audioPath, audioBytes),
+      ]);
+      const deck = coreDeck();
+      const slide = deck.slides[0];
+      if (!slide) {
+        throw new Error("fixture slide is missing");
+      }
+      slide.elements = [
+        {
+          ...base("video", { x: 80, y: 100, w: 800, h: 450 }),
+          type: "video",
+          src: videoPath,
+          contentHash: createHash("sha256").update(videoBytes).digest("hex"),
+          mimeType: "video/mp4",
+          byteLength: videoBytes.byteLength,
+          posterSrc: PIXEL_PNG,
+          posterMimeType: "image/png",
+          fit: "contain",
+          alt: "製品デモ動画",
+        },
+        {
+          ...base("audio", { x: 80, y: 600, w: 800, h: 120 }),
+          type: "audio",
+          src: audioPath,
+          contentHash: createHash("sha256").update(audioBytes).digest("hex"),
+          mimeType: "audio/mp4",
+          byteLength: audioBytes.byteLength,
+          transcript: "製品紹介のナレーション",
+        },
+      ];
+      slide.notes = { markdown: "", plainText: "", sources: [] };
+
+      const rendered = await renderPptx(deck, { strictEditable: true });
+      const report = await inspectPptx(rendered.data, deck, {
+        strictEditable: true,
+      });
+      const mediaObjects = report.slides[0]?.objects.filter(
+        (object) => object.nativeKind === "video" || object.nativeKind === "audio",
+      );
+
+      expect(report.valid, JSON.stringify(report.issues, null, 2)).toBe(true);
+      expect(report.verifiedNativeObjects).toBe(2);
+      expect(mediaObjects).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "lt:gallery:video",
+            nativeKind: "video",
+            mediaMimeType: "video/mp4",
+            mediaByteLength: videoBytes.byteLength,
+            mediaContentHash: createHash("sha256").update(videoBytes).digest("hex"),
+          }),
+          expect.objectContaining({
+            name: "lt:gallery:audio",
+            nativeKind: "audio",
+            mediaMimeType: "audio/mp4",
+            mediaByteLength: audioBytes.byteLength,
+            mediaContentHash: createHash("sha256").update(audioBytes).digest("hex"),
+          }),
+        ]),
+      );
+
+      const zip = await JSZip.loadAsync(rendered.data);
+      const embeddedVideo = Object.keys(zip.files).find((name) =>
+        /^ppt\/media\/.*\.mp4$/.test(name),
+      );
+      expect(embeddedVideo).toBeTruthy();
+      zip.file(embeddedVideo ?? "", Buffer.from("changed"));
+      const tampered = await zip.generateAsync({ type: "uint8array" });
+      const tamperedReport = await inspectPptx(tampered, deck);
+      expect(tamperedReport.valid).toBe(false);
+      expect(tamperedReport.issues).toContainEqual(
+        expect.objectContaining({
+          code: "media.contentHash-mismatch",
+          elementId: "video",
+        }),
+      );
+    } finally {
+      await rm(fixtureDirectory, { recursive: true, force: true });
+    }
+  });
+
+  it("verifies embedded video and audio WebVTT tracks against DeckIR", async () => {
+    const fixture = await captionMediaFixture();
+    try {
+      const rendered = await renderPptx(fixture.deck, { strictEditable: true });
+      const report = await inspectPptx(rendered.data, fixture.deck, {
+        strictEditable: true,
+      });
+
+      expect(report.valid, JSON.stringify(report.issues, null, 2)).toBe(true);
+      expect(report.verifiedNativeObjects).toBe(2);
+      expect(report.slides[0]?.objects).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "lt:gallery:caption-video",
+            nativeKind: "video",
+            captionTrackPresent: true,
+            captionRelationshipId: expect.any(String),
+            captionRelationshipType:
+              "http://schemas.microsoft.com/office/2017/04/relationships/track",
+            captionTarget: expect.stringMatching(/^ppt\/media\/.*\.vtt$/),
+            captionMimeType: "text/vtt",
+            captionContentHash: createHash("sha256")
+              .update(fixture.videoCaptionBytes)
+              .digest("hex"),
+            captionLanguage: "ja-JP",
+            captionLabel: "日本語字幕",
+          }),
+          expect.objectContaining({
+            name: "lt:gallery:caption-audio",
+            nativeKind: "audio",
+            captionTrackPresent: true,
+            captionRelationshipId: expect.any(String),
+            captionRelationshipType:
+              "http://schemas.microsoft.com/office/2017/04/relationships/track",
+            captionTarget: expect.stringMatching(/^ppt\/media\/.*\.vtt$/),
+            captionMimeType: "text/vtt",
+            captionContentHash: createHash("sha256")
+              .update(fixture.audioCaptionBytes)
+              .digest("hex"),
+            captionLanguage: "en-US",
+            captionLabel: "English captions",
+          }),
+        ]),
+      );
+    } finally {
+      await rm(fixture.directory, { recursive: true, force: true });
+    }
+  });
+
+  it("recognizes the native a:audioFile form written by PowerPoint", async () => {
+    const fixture = await captionMediaFixture();
+    try {
+      const rendered = await renderPptx(fixture.deck, { strictEditable: true });
+      const zip = await JSZip.loadAsync(rendered.data);
+      const slideFile = zip.file("ppt/slides/slide1.xml");
+      expect(slideFile).not.toBeNull();
+      const slideXml = (await slideFile?.async("string")) ?? "";
+      const marker = 'name="lt:gallery:caption-audio"';
+      const markerIndex = slideXml.indexOf(marker);
+      const blockStart = slideXml.lastIndexOf("<p:pic>", markerIndex);
+      const blockEndStart = slideXml.indexOf("</p:pic>", markerIndex);
+      expect(markerIndex).toBeGreaterThanOrEqual(0);
+      expect(blockStart).toBeGreaterThanOrEqual(0);
+      expect(blockEndStart).toBeGreaterThanOrEqual(0);
+      const blockEnd = blockEndStart + "</p:pic>".length;
+      const audioBlock = slideXml
+        .slice(blockStart, blockEnd)
+        .replace("<a:videoFile", "<a:audioFile")
+        .replace("</a:videoFile>", "</a:audioFile>");
+      zip.file(
+        "ppt/slides/slide1.xml",
+        `${slideXml.slice(0, blockStart)}${audioBlock}${slideXml.slice(blockEnd)}`,
+      );
+
+      const report = await inspectPptx(
+        await zip.generateAsync({ type: "uint8array" }),
+        fixture.deck,
+        { strictEditable: true },
+      );
+
+      expect(report.valid, JSON.stringify(report.issues, null, 2)).toBe(true);
+      expect(report.slides[0]?.objects).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "lt:gallery:caption-audio",
+            nativeKind: "audio",
+            captionTrackPresent: true,
+          }),
+        ]),
+      );
+    } finally {
+      await rm(fixture.directory, { recursive: true, force: true });
+    }
+  });
+
+  it("detects modified WebVTT caption bytes", async () => {
+    const fixture = await captionMediaFixture();
+    try {
+      const rendered = await renderPptx(fixture.deck);
+      const originalReport = await inspectPptx(rendered.data, fixture.deck);
+      const video = originalReport.slides[0]?.objects.find(
+        (object) => object.name === "lt:gallery:caption-video",
+      );
+      expect(video?.captionTarget).toBeTruthy();
+
+      const zip = await JSZip.loadAsync(rendered.data);
+      zip.file(
+        video?.captionTarget ?? "",
+        Buffer.from("WEBVTT\n\n00:00.000 --> 00:01.500\n改ざん済み。\n", "utf8"),
+      );
+      const tampered = await zip.generateAsync({ type: "uint8array" });
+      const report = await inspectPptx(tampered, fixture.deck);
+
+      expect(report.valid).toBe(false);
+      expect(report.issues).toContainEqual(
+        expect.objectContaining({
+          code: "caption.contentHash-mismatch",
+          elementId: "caption-video",
+        }),
+      );
+    } finally {
+      await rm(fixture.directory, { recursive: true, force: true });
+    }
+  });
+
+  it("detects missing caption relationships, parts, and text/vtt declarations", async () => {
+    const fixture = await captionMediaFixture();
+    try {
+      const rendered = await renderPptx(fixture.deck);
+      const originalReport = await inspectPptx(rendered.data, fixture.deck);
+      const video = originalReport.slides[0]?.objects.find(
+        (object) => object.name === "lt:gallery:caption-video",
+      );
+      expect(video?.captionRelationshipId).toBeTruthy();
+      expect(video?.captionTarget).toBeTruthy();
+
+      const relationshipZip = await JSZip.loadAsync(rendered.data);
+      const relationshipsFile = relationshipZip.file(
+        "ppt/slides/_rels/slide1.xml.rels",
+      );
+      expect(relationshipsFile).not.toBeNull();
+      const relationshipsXml = await relationshipsFile?.async("string");
+      const withoutRelationship = relationshipsXml?.replace(
+        relationshipElementPattern(video?.captionRelationshipId ?? ""),
+        "",
+      );
+      expect(withoutRelationship).not.toBe(relationshipsXml);
+      relationshipZip.file(
+        "ppt/slides/_rels/slide1.xml.rels",
+        withoutRelationship ?? "",
+      );
+      const missingRelationshipReport = await inspectPptx(
+        await relationshipZip.generateAsync({ type: "uint8array" }),
+        fixture.deck,
+      );
+      expect(missingRelationshipReport.issues).toContainEqual(
+        expect.objectContaining({
+          code: "caption.missing-relationship",
+          elementId: "caption-video",
+        }),
+      );
+
+      const partZip = await JSZip.loadAsync(rendered.data);
+      partZip.remove(video?.captionTarget ?? "");
+      const missingPartReport = await inspectPptx(
+        await partZip.generateAsync({ type: "uint8array" }),
+        fixture.deck,
+      );
+      expect(missingPartReport.issues).toContainEqual(
+        expect.objectContaining({
+          code: "caption.missing-part",
+          elementId: "caption-video",
+        }),
+      );
+
+      const contentTypeZip = await JSZip.loadAsync(rendered.data);
+      const contentTypesFile = contentTypeZip.file("[Content_Types].xml");
+      expect(contentTypesFile).not.toBeNull();
+      const contentTypesXml = await contentTypesFile?.async("string");
+      const wrongContentType = contentTypesXml?.replaceAll(
+        'ContentType="text/vtt"',
+        'ContentType="text/plain"',
+      );
+      expect(wrongContentType).not.toBe(contentTypesXml);
+      contentTypeZip.file("[Content_Types].xml", wrongContentType ?? "");
+      const wrongContentTypeReport = await inspectPptx(
+        await contentTypeZip.generateAsync({ type: "uint8array" }),
+        fixture.deck,
+      );
+      expect(wrongContentTypeReport.issues).toContainEqual(
+        expect.objectContaining({
+          code: "caption.content-type-mismatch",
+          elementId: "caption-video",
+          expected: "text/vtt",
+          actual: "text/plain",
+        }),
+      );
+    } finally {
+      await rm(fixture.directory, { recursive: true, force: true });
+    }
   });
 
   it("detects a connector flattened back to a normal line shape", async () => {

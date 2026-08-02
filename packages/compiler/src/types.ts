@@ -20,6 +20,11 @@ export interface SlideFrontmatter {
   notes: string;
   sources: Array<{ label: string; url?: string }>;
   masterId?: string;
+  background?: {
+    src: string;
+    fit: "stretch" | "contain" | "cover";
+    focalPosition?: { x: number; y: number };
+  };
 }
 
 export interface DeckMdxConfig extends Omit<DeckConfig, "slides"> {

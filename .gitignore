@@ -7,6 +7,7 @@ decks/*/dist/
 **/.livetoon/
 coverage/
 output/
+artifacts/
 playwright-report/
 test-results/
 .slide-cache/

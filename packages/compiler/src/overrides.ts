@@ -1,4 +1,9 @@
-import type { Diagnostic, ElementIR, SlideIR } from "@livetoon/slide-deck-ir";
+import {
+  type Diagnostic,
+  type ElementIR,
+  type SlideIR,
+  scaleTableDimensions,
+} from "@livetoon/slide-deck-ir";
 
 import { createDiagnostic } from "./diagnostics.js";
 import type { ElementLayoutOverride, LayoutOverrides } from "./types.js";
@@ -22,6 +27,34 @@ function applyElementOverride(
   element: ElementIR,
   override: ElementLayoutOverride,
 ): void {
+  const previousWidth = element.frame.w;
+  const previousHeight = element.frame.h;
+  const nextWidth = override.w ?? previousWidth;
+  const nextHeight = override.h ?? previousHeight;
+  if (element.type === "table") {
+    if (element.columnWidths && nextWidth !== previousWidth) {
+      element.columnWidths = scaleTableDimensions(
+        element.columnWidths,
+        previousWidth,
+        nextWidth,
+      );
+    }
+    const rowHeights = element.rows.map((row) => row.height);
+    if (
+      nextHeight !== previousHeight &&
+      rowHeights.length > 0 &&
+      rowHeights.every((height) => height !== undefined)
+    ) {
+      const scaled = scaleTableDimensions(
+        rowHeights as number[],
+        previousHeight,
+        nextHeight,
+      );
+      element.rows.forEach((row, index) => {
+        row.height = scaled[index];
+      });
+    }
+  }
   element.frame = {
     x: override.x ?? element.frame.x,
     y: override.y ?? element.frame.y,

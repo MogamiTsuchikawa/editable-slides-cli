@@ -1,9 +1,18 @@
-import { type ChildProcess, spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { access, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  readFile,
+  realpath,
+  rename,
+  rm,
+  stat,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 
 import {
   compileDeckDirectory,
@@ -14,25 +23,41 @@ import {
 import type { DeckIR, Diagnostic, ElementIR } from "@livetoon/slide-deck-ir";
 import { companyTheme } from "@livetoon/slide-theme-company";
 import { defaultTheme, type ThemeDefinition } from "@livetoon/slide-theme-default";
+import { type RunningStudio, startPackagedStudio } from "./studio-server.js";
+import { cliVersion } from "./version.js";
 
-export const repositoryRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../..",
-);
+export type { RunningStudio } from "./studio-server.js";
+
+export function resolveRepositoryRoot(
+  options: {
+    explicitRoot?: string;
+    initialDirectory?: string;
+    currentDirectory?: string;
+  } = {},
+): string {
+  return path.resolve(
+    options.explicitRoot ??
+      options.currentDirectory ??
+      options.initialDirectory ??
+      process.cwd(),
+  );
+}
+
+export const repositoryRoot = resolveRepositoryRoot({
+  explicitRoot: process.env.LIVETOON_WORKSPACE_ROOT,
+  initialDirectory: process.env.INIT_CWD,
+  currentDirectory: process.cwd(),
+});
 
 export interface CompiledArtifact {
   deckDirectory: string;
   outputDirectory: string;
+  finalOutputDirectory: string;
   deckIrPath: string;
+  publicDeckIrPath: string;
   diagnosticsPath: string;
   deck: DeckIR;
   diagnostics: Diagnostic[];
-}
-
-export interface RunningStudio {
-  child: ChildProcess;
-  baseUrl: string;
-  stop(): Promise<void>;
 }
 
 export interface BuildManifest {
@@ -51,10 +76,25 @@ export interface BuildManifest {
     sha256?: string;
   }>;
   assets: Array<{
+    kind: "image" | "icon" | "video" | "audio";
     slideId: string;
     elementId: string;
     source: string;
     sha256?: string;
+    mimeType?: string;
+    byteLength?: number;
+    poster?: {
+      source: string;
+      sha256?: string;
+      mimeType?: string;
+    };
+    caption?: {
+      source: string;
+      sha256?: string;
+      mimeType: "text/vtt";
+      language?: string;
+      label?: string;
+    };
   }>;
   sourceContentHash: string;
   buildTimestamp: string;
@@ -83,9 +123,16 @@ export async function atomicWriteText(
 
 export async function compileArtifact(
   deckInput: string,
-  options: { failOnWarnings?: boolean } = {},
+  options: { failOnWarnings?: boolean; staging?: boolean } = {},
 ): Promise<CompiledArtifact> {
-  const deckDirectory = path.resolve(deckInput);
+  const requestedDirectory = path.resolve(deckInput);
+  let deckDirectory: string;
+  try {
+    deckDirectory = await realpath(requestedDirectory);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    deckDirectory = requestedDirectory;
+  }
   const entryPath = await resolveDeckEntry(deckDirectory);
   await access(entryPath);
   const config = await readDeckSourceConfig(entryPath);
@@ -94,24 +141,156 @@ export async function compileArtifact(
     failOnWarnings: options.failOnWarnings ?? false,
     theme,
   });
-  const outputDirectory = path.resolve(repositoryRoot, "dist", result.deck.metadata.id);
-  const deckIrPath = path.join(outputDirectory, "deck.ir.json");
+  const finalOutputDirectory = path.resolve(
+    repositoryRoot,
+    "dist",
+    result.deck.metadata.id,
+  );
+  const outputDirectory = options.staging
+    ? path.join(
+        path.dirname(finalOutputDirectory),
+        `.${path.basename(finalOutputDirectory)}.release-${randomUUID()}`,
+      )
+    : finalOutputDirectory;
+  const deckIrPath = path.join(deckDirectory, ".livetoon", "deck.ir.json");
+  const publicDeckIrPath = path.join(outputDirectory, "deck.ir.json");
   const diagnosticsPath = path.join(outputDirectory, "diagnostics.json");
-  await Promise.all([
-    atomicWriteText(deckIrPath, serializeDeck(result.deck)),
-    atomicWriteText(
-      diagnosticsPath,
-      `${JSON.stringify(result.diagnostics, null, 2)}\n`,
-    ),
-  ]);
+  const publicDeck = sanitizeArtifactPaths(result.deck, {
+    deckDirectory,
+    outputDirectory,
+    workspaceDirectory: repositoryRoot,
+  });
+  const publicDiagnostics = sanitizeArtifactPaths(result.diagnostics, {
+    deckDirectory,
+    outputDirectory,
+    workspaceDirectory: repositoryRoot,
+  });
+  try {
+    await Promise.all([
+      atomicWriteText(deckIrPath, serializeDeck(result.deck)),
+      atomicWriteText(publicDeckIrPath, serializeDeck(publicDeck as DeckIR)),
+      atomicWriteText(
+        diagnosticsPath,
+        `${JSON.stringify(publicDiagnostics, null, 2)}\n`,
+      ),
+    ]);
+  } catch (error) {
+    if (options.staging) {
+      await rm(outputDirectory, { recursive: true, force: true });
+    }
+    throw error;
+  }
   return {
     deckDirectory,
     outputDirectory,
+    finalOutputDirectory,
     deckIrPath,
+    publicDeckIrPath,
     diagnosticsPath,
     deck: result.deck,
     diagnostics: result.diagnostics,
   };
+}
+
+export async function publishStagedOutput(
+  stagingDirectory: string,
+  finalDirectory: string,
+): Promise<void> {
+  const staging = path.resolve(stagingDirectory);
+  const destination = path.resolve(finalDirectory);
+  if (
+    path.dirname(staging) !== path.dirname(destination) ||
+    !path.basename(staging).startsWith(`.${path.basename(destination)}.release-`)
+  ) {
+    throw new Error("Refusing to publish an unexpected staging directory.");
+  }
+  const stagingStats = await stat(staging);
+  if (!stagingStats.isDirectory()) {
+    throw new Error("Release staging output is not a directory.");
+  }
+  const backup = path.join(
+    path.dirname(destination),
+    `.${path.basename(destination)}.backup-${randomUUID()}`,
+  );
+  let movedExisting = false;
+  try {
+    await rename(destination, backup);
+    movedExisting = true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  try {
+    await rename(staging, destination);
+  } catch (error) {
+    if (movedExisting) await rename(backup, destination).catch(() => undefined);
+    throw error;
+  }
+  if (movedExisting) await rm(backup, { recursive: true, force: true });
+}
+
+const ARTIFACT_PATH_KEYS = new Set([
+  "captionSrc",
+  "file",
+  "path",
+  "posterSrc",
+  "source",
+  "sourcePath",
+  "src",
+]);
+
+function portable(relativePath: string): string {
+  return relativePath.split(path.sep).join("/");
+}
+
+function containedRelative(parent: string, candidate: string): string | undefined {
+  const relative = path.relative(parent, candidate);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative))
+    ? relative
+    : undefined;
+}
+
+function sanitizePath(
+  value: string,
+  roots: {
+    deckDirectory: string;
+    outputDirectory: string;
+    workspaceDirectory: string;
+  },
+): string {
+  if (!path.isAbsolute(value)) return value;
+  const deckPath = containedRelative(roots.deckDirectory, value);
+  if (deckPath !== undefined) return `./${portable(deckPath)}`;
+  const outputPath = containedRelative(roots.outputDirectory, value);
+  if (outputPath !== undefined) return `./${portable(outputPath)}`;
+  const workspacePath = containedRelative(roots.workspaceDirectory, value);
+  if (workspacePath !== undefined) return `workspace/${portable(workspacePath)}`;
+  return `external/${path.basename(value)}`;
+}
+
+export function sanitizeArtifactPaths(
+  value: unknown,
+  roots: {
+    deckDirectory: string;
+    outputDirectory: string;
+    workspaceDirectory: string;
+  },
+  key?: string,
+): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeArtifactPaths(item, roots));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([childKey, child]) => [
+        childKey,
+        sanitizeArtifactPaths(child, roots, childKey),
+      ]),
+    );
+  }
+  if (typeof value === "string" && key && ARTIFACT_PATH_KEYS.has(key)) {
+    return sanitizePath(value, roots);
+  }
+  return value;
 }
 
 function isThemeDefinition(value: unknown): value is ThemeDefinition {
@@ -163,6 +342,12 @@ export async function loadTheme(
     return structuredClone(companyTheme);
   }
 
+  if (process.env.LIVETOON_ALLOW_CUSTOM_THEME !== "1") {
+    throw new Error(
+      `Custom theme "${reference}" is disabled because theme modules execute code. Use "company" or "default". Set LIVETOON_ALLOW_CUSTOM_THEME=1 only for a theme you trust.`,
+    );
+  }
+
   const pathLike =
     path.isAbsolute(reference) ||
     reference.startsWith(".") ||
@@ -212,16 +397,66 @@ function walkElements(
   for (const element of elements) {
     if (element.type === "image" || element.type === "icon") {
       assets.push({
+        kind: element.type,
         slideId,
         elementId: element.id,
         source: element.src,
         ...(element.contentHash ? { sha256: element.contentHash } : {}),
+        ...("mimeType" in element && element.mimeType
+          ? { mimeType: element.mimeType }
+          : {}),
+      });
+    } else if (element.type === "video" || element.type === "audio") {
+      assets.push({
+        kind: element.type,
+        slideId,
+        elementId: element.id,
+        source: element.src,
+        ...(element.contentHash ? { sha256: element.contentHash } : {}),
+        mimeType: element.mimeType,
+        ...(element.byteLength !== undefined ? { byteLength: element.byteLength } : {}),
+        ...(element.posterSrc
+          ? {
+              poster: {
+                source: element.posterSrc,
+                ...(element.posterContentHash
+                  ? { sha256: element.posterContentHash }
+                  : {}),
+                ...(element.posterMimeType ? { mimeType: element.posterMimeType } : {}),
+              },
+            }
+          : {}),
+        ...(element.captionSrc
+          ? {
+              caption: {
+                source: element.captionSrc,
+                ...(element.captionContentHash
+                  ? { sha256: element.captionContentHash }
+                  : {}),
+                mimeType: "text/vtt",
+                ...(element.captionLanguage
+                  ? { language: element.captionLanguage }
+                  : {}),
+                ...(element.captionLabel ? { label: element.captionLabel } : {}),
+              },
+            }
+          : {}),
       });
     }
     if (element.type === "group") {
       walkElements(slideId, element.children, assets);
     }
   }
+}
+
+export function collectBuildAssets(
+  deck: Pick<DeckIR, "slides">,
+): BuildManifest["assets"] {
+  const assets: BuildManifest["assets"] = [];
+  for (const slide of deck.slides) {
+    walkElements(slide.id, slide.elements, assets);
+  }
+  return assets;
 }
 
 async function lockfileHash(): Promise<string | undefined> {
@@ -237,15 +472,12 @@ export async function createBuildManifest(
   artifact: CompiledArtifact,
   outputs?: Record<string, unknown>,
 ): Promise<BuildManifest> {
-  const assets: BuildManifest["assets"] = [];
-  for (const slide of artifact.deck.slides) {
-    walkElements(slide.id, slide.elements, assets);
-  }
+  const assets = collectBuildAssets(artifact.deck);
   const count = (severity: Diagnostic["severity"]) =>
     artifact.diagnostics.filter((diagnostic) => diagnostic.severity === severity)
       .length;
-  return {
-    cliVersion: "0.1.0",
+  const manifest: BuildManifest = {
+    cliVersion: cliVersion(),
     deckIrSchemaVersion: artifact.deck.schemaVersion,
     nodeVersion: process.version,
     ...(await lockfileHash().then((sha256) =>
@@ -271,6 +503,11 @@ export async function createBuildManifest(
     },
     ...(outputs ? { outputs } : {}),
   };
+  return sanitizeArtifactPaths(manifest, {
+    deckDirectory: artifact.deckDirectory,
+    outputDirectory: artifact.outputDirectory,
+    workspaceDirectory: repositoryRoot,
+  }) as BuildManifest;
 }
 
 export async function writeBuildManifest(
@@ -302,47 +539,6 @@ async function freePort(): Promise<number> {
   });
 }
 
-async function waitForHttp(
-  url: string,
-  child: ChildProcess,
-  timeoutMs = 30_000,
-): Promise<void> {
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
-    if (child.exitCode !== null) {
-      throw new Error(`Studio exited before it became ready (exit ${child.exitCode})`);
-    }
-    try {
-      const response = await fetch(url);
-      if (response.ok) {
-        return;
-      }
-    } catch {
-      // The Vite server is still starting.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error(`Timed out waiting for Studio: ${url}`);
-}
-
-async function stopChild(child: ChildProcess): Promise<void> {
-  if (child.exitCode !== null || child.killed) {
-    return;
-  }
-  child.kill("SIGTERM");
-  const exited = new Promise<void>((resolve) => {
-    child.once("exit", () => resolve());
-  });
-  const timeout = new Promise<void>((resolve) => {
-    setTimeout(resolve, 3_000);
-  });
-  await Promise.race([exited, timeout]);
-  if (child.exitCode === null) {
-    child.kill("SIGKILL");
-    await exited;
-  }
-}
-
 export async function startStudio(
   artifact: CompiledArtifact,
   options: {
@@ -352,55 +548,10 @@ export async function startStudio(
   } = {},
 ): Promise<RunningStudio> {
   const port = options.port ?? (await freePort());
-  const baseUrl = `http://127.0.0.1:${port}`;
-  const args = [
-    "run",
-    "dev",
-    "--workspace=@livetoon/slide-studio",
-    "--",
-    "--host",
-    "127.0.0.1",
-    "--port",
-    String(port),
-    "--strictPort",
-  ];
-  if (options.open) {
-    args.push("--open", `/edit/${artifact.deck.metadata.id}`);
-  }
-  const executable = process.platform === "win32" ? "npm.cmd" : "npm";
-  const child = spawn(executable, args, {
-    cwd: repositoryRoot,
-    env: {
-      ...process.env,
-      LIVETOON_DECK_DIR: artifact.deckDirectory,
-      LIVETOON_DECK_IR: artifact.deckIrPath,
-    },
-    stdio: options.inheritOutput ? "inherit" : ["ignore", "pipe", "pipe"],
+  return startPackagedStudio(artifact, repositoryRoot, {
+    port,
+    open: options.open,
   });
-  let capturedError = "";
-  if (!options.inheritOutput) {
-    child.stderr?.on("data", (chunk: Buffer) => {
-      capturedError = `${capturedError}${chunk.toString("utf8")}`.slice(-8_000);
-    });
-  }
-  try {
-    await waitForHttp(
-      `${baseUrl}/api/decks/${encodeURIComponent(artifact.deck.metadata.id)}`,
-      child,
-    );
-  } catch (error) {
-    await stopChild(child);
-    throw new Error(
-      `${error instanceof Error ? error.message : String(error)}${
-        capturedError ? `\n${capturedError.trim()}` : ""
-      }`,
-    );
-  }
-  return {
-    child,
-    baseUrl,
-    stop: () => stopChild(child),
-  };
 }
 
 export function formatDiagnostic(diagnostic: Diagnostic): string {
