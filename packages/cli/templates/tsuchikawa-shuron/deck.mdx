@@ -1,0 +1,80 @@
+---
+schemaVersion: 1
+id: template
+title: "資料タイトル"
+theme: "tsuchikawa-shuron"
+canvas: wide
+language: ja-JP
+strictEditable: true
+slides:
+  - id: cover
+    layout: cover
+    notes: |
+      発表題目、所属、氏名を簡潔に示します。
+    sources: []
+  - id: section
+    layout: section
+    notes: |
+      次の章で扱う問いと、その位置づけを説明します。
+    sources: []
+  - id: content
+    layout: title-body
+    notes: |
+      このページの要点を先に述べ、背景と根拠を順に説明します。
+    sources: []
+  - id: comparison
+    layout: title-two-column
+    notes: |
+      左右を同じ観点で比較し、差分と意味を説明します。
+    sources: []
+---
+
+<Slide id="cover">
+
+# __LIVETOON_SLIDE_TITLE__
+
+修士論文発表
+
+</Slide>
+
+<Slide id="section">
+
+# 研究の全体像
+
+背景から結論までの流れを示す
+
+</Slide>
+
+<Slide id="content">
+
+# 研究の背景
+
+- 対象とする課題を簡潔に示す
+- 先行研究との関係を整理する
+- 本研究で明らかにする問いを置く
+
+</Slide>
+
+<Slide id="comparison">
+
+# 分析結果を同じ観点で比較する
+
+<Slot name="left">
+
+## 条件A
+
+- 観測した特徴
+- 結果の解釈
+
+</Slot>
+
+<Slot name="right">
+
+## 条件B
+
+- 観測した特徴
+- 結果の解釈
+
+</Slot>
+
+</Slide>

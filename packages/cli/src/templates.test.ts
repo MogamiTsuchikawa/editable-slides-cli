@@ -6,6 +6,7 @@ import path from "node:path";
 
 import { compileDeckDirectory } from "@livetoon/slide-compiler";
 import { companyTheme } from "@livetoon/slide-theme-company";
+import { tsuchikawaShuronTheme } from "@livetoon/slide-theme-tsuchikawa-shuron";
 import JSZip from "jszip";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -164,10 +165,46 @@ describe("template manifest", () => {
       parseTemplateManifest(
         JSON.stringify({ ...validManifest(), theme: "./theme.js" }),
       ),
-    ).toThrow("companyまたはdefault");
+    ).toThrow("限定しています");
     expect(() =>
       parseTemplateManifest(JSON.stringify({ ...validManifest(), scripts: {} })),
     ).toThrow("未対応の項目");
+  });
+});
+
+describe("built-in templates", () => {
+  it("materializes and compiles tsuchikawa-shuron", async () => {
+    const root = await testHome();
+    const target = path.join(root, "土川修論");
+
+    const resolved = await resolveTemplate("tsuchikawa-shuron");
+    expect(resolved).toMatchObject({
+      registryName: "tsuchikawa-shuron",
+      builtIn: true,
+      manifest: { theme: "tsuchikawa-shuron" },
+    });
+
+    await newCommand(
+      target,
+      { template: "tsuchikawa-shuron", title: "土川修士論文" },
+      { out: () => {}, error: () => {} },
+    );
+    const source = await readFile(path.join(target, "deck.mdx"), "utf8");
+    expect(source).toContain('theme: "tsuchikawa-shuron"');
+    expect(source).toContain("# 土川修士論文");
+
+    const result = await compileDeckDirectory(target, {
+      theme: tsuchikawaShuronTheme,
+    });
+    expect(result.deck.slides).toHaveLength(4);
+    expect(result.diagnostics).toEqual([]);
+
+    await expect(removeTemplate("tsuchikawa-shuron")).rejects.toThrow("削除できません");
+    await expect(
+      addTemplateFromUrl("https://example.com/template.zip", {
+        name: "tsuchikawa-shuron",
+      }),
+    ).rejects.toThrow("上書きできません");
   });
 });
 
@@ -233,7 +270,11 @@ describe("URL templates", () => {
     expect(metadata).toContain("?<redacted>");
 
     const summaries = await listTemplates();
-    expect(summaries.map((item) => item.id)).toEqual(["livetoon", "sales"]);
+    expect(summaries.map((item) => item.id)).toEqual([
+      "livetoon",
+      "tsuchikawa-shuron",
+      "sales",
+    ]);
 
     const target = path.join(root, "営業提案資料");
     await newCommand(

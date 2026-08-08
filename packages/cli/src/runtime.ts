@@ -21,9 +21,9 @@ import {
   serializeDeck,
 } from "@livetoon/slide-compiler";
 import type { DeckIR, Diagnostic, ElementIR } from "@livetoon/slide-deck-ir";
-import { companyTheme } from "@livetoon/slide-theme-company";
-import { defaultTheme, type ThemeDefinition } from "@livetoon/slide-theme-default";
+import type { ThemeDefinition } from "@livetoon/slide-theme-default";
 import { type RunningStudio, startPackagedStudio } from "./studio-server.js";
+import { BUILT_IN_THEME_IDS, resolveBuiltInTheme } from "./themes.js";
 import { cliVersion } from "./version.js";
 
 export type { RunningStudio } from "./studio-server.js";
@@ -335,16 +335,12 @@ export async function loadTheme(
   reference: string,
   deckDirectory: string,
 ): Promise<ThemeDefinition> {
-  if (reference === "default") {
-    return structuredClone(defaultTheme);
-  }
-  if (reference === "company") {
-    return structuredClone(companyTheme);
-  }
+  const builtIn = resolveBuiltInTheme(reference);
+  if (builtIn) return builtIn;
 
   if (process.env.LIVETOON_ALLOW_CUSTOM_THEME !== "1") {
     throw new Error(
-      `Custom theme "${reference}" is disabled because theme modules execute code. Use "company" or "default". Set LIVETOON_ALLOW_CUSTOM_THEME=1 only for a theme you trust.`,
+      `Custom theme "${reference}" is disabled because theme modules execute code. Use ${BUILT_IN_THEME_IDS.map((id) => `"${id}"`).join(", ")}. Set LIVETOON_ALLOW_CUSTOM_THEME=1 only for a theme you trust.`,
     );
   }
 

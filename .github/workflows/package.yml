@@ -11,20 +11,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24.0.1
           cache: npm
+      - run: npm install --global npm@11.5.1
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build:runtime
       - run: npm run build:template
-      - run: npm run test:package -w @livetoon/slide-cli
+      - run: npm run test:package -w livetoon-slide
         env:
           SLIDE_PACKAGE_BROWSER: "1"
       - run: mkdir -p artifacts
-      - run: npm pack --workspace=@livetoon/slide-cli --ignore-scripts --pack-destination artifacts
+      - run: npm publish --workspace=livetoon-slide --dry-run --ignore-scripts
+      - run: npm pack --workspace=livetoon-slide --ignore-scripts --pack-destination artifacts
       - uses: actions/upload-artifact@v4
         with:
           name: livetoon-slide-cli

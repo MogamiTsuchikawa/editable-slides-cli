@@ -1,10 +1,12 @@
 # 変更履歴
 
-公開可能な範囲とライセンスが確定するまでは、配布用packageを非公開のまま扱う。
+ソースと同梱素材はMIT Licenseで公開する。
 
 ## [Unreleased]
 
-- 公開先、package名、ライセンスの確定後に初回公開版を準備する。
+- PowerPoint由来の青緑デザインを`tsuchikawa-shuron`組み込みテーマ・テンプレートとして追加。
+- 公開package名を`livetoon-slide`に確定し、npm Trusted Publishing向けの
+  tag release workflow、3 OS package検査、成果物の来歴証明を追加。
 - 同梱のLivetoonテンプレートから資料名だけで作成する操作と、HTTPS URLの
   ZIPテンプレートを登録・一覧・削除する操作を追加。
 - 公式LivetoonテンプレートのZIPとSHA-256を再現可能に生成し、配布artifactへ

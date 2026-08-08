@@ -219,6 +219,27 @@ describe("secure deck files", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  it.each(["unsafe.icns", "unsafe.jxl", "unsafe.heic", "unsafe.heif"])(
+    "rejects unsupported image parser input %s before parsing",
+    async (filename) => {
+      const root = await mkdtemp(path.join(tmpdir(), "livetoon-security-"));
+      try {
+        await writeFile(path.join(root, filename), Buffer.from("untrusted image"));
+        await expectSecurityCode(
+          readSecureDeckFile({
+            deckDirectory: root,
+            sourcePath: path.join(root, "deck.mdx"),
+            reference: filename,
+            allowedExtensions: IMAGE_FILE_POLICIES,
+          }),
+          "ASSET_TYPE_UNSUPPORTED",
+        );
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+  );
 });
 
 describe("SVG and URL security", () => {

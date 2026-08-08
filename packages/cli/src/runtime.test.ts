@@ -16,6 +16,7 @@ import {
   collectBuildAssets,
   compileArtifact,
   formatDiagnostic,
+  loadTheme,
   publishStagedOutput,
   resolveRepositoryRoot,
   sanitizeArtifactPaths,
@@ -61,6 +62,18 @@ describe("resolveRepositoryRoot", () => {
         currentDirectory: "/workspace/current",
       }),
     ).toBe("/workspace/current");
+  });
+});
+
+describe("built-in themes", () => {
+  it("loads tsuchikawa-shuron without enabling executable custom themes", async () => {
+    const first = await loadTheme("tsuchikawa-shuron", process.cwd());
+    first.ir.name = "mutated";
+
+    const second = await loadTheme("tsuchikawa-shuron", process.cwd());
+
+    expect(second.ir.id).toBe("tsuchikawa-shuron");
+    expect(second.ir.name).toBe("Tsuchikawa Shuron");
   });
 });
 

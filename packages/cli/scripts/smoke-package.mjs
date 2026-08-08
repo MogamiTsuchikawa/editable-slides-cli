@@ -20,10 +20,12 @@ function isAllowedPackageFile(file) {
   return (
     file === "package.json" ||
     file === "README.md" ||
+    file === "LICENSE" ||
     file === "dist/bin/index.js" ||
     file.startsWith("dist/assets/") ||
     file.startsWith("dist/studio/") ||
-    file.startsWith("dist/templates/livetoon/")
+    file.startsWith("dist/templates/livetoon/") ||
+    file.startsWith("dist/templates/tsuchikawa-shuron/")
   );
 }
 
@@ -184,11 +186,13 @@ try {
     process.platform === "win32" ? "slide.cmd" : "slide",
   );
   await access(slide);
+  const metadata = JSON.parse(
+    await readFile(path.join(packageRoot, "package.json"), "utf8"),
+  );
   const installedBinary = path.join(
     installRoot,
     "node_modules",
-    "@livetoon",
-    "slide-cli",
+    ...metadata.name.split("/"),
     "dist",
     "bin",
     "index.js",
@@ -211,9 +215,6 @@ try {
     })
   ).trim();
   const version = (await runSlide(["--version"])).trim();
-  const metadata = JSON.parse(
-    await readFile(path.join(packageRoot, "package.json"), "utf8"),
-  );
   if (version !== metadata.version) {
     throw new Error(`Version mismatch: expected ${metadata.version}, got ${version}`);
   }
@@ -264,6 +265,25 @@ try {
   }
   await runSlide(["lint", deckTarget, "--strict-editable", "--fail-on-warnings"]);
 
+  const templates = await runSlide(["template", "list"]);
+  for (const builtIn of ["livetoon", "tsuchikawa-shuron"]) {
+    if (!templates.includes(`${builtIn}\tbuilt-in`)) {
+      throw new Error(`Installed template list omitted ${builtIn}: ${templates}`);
+    }
+  }
+  const shuronTarget = "土川修論スモーク";
+  const shuronDirectory = path.join(installRoot, shuronTarget);
+  await runSlide(["new", "-t", "tsuchikawa-shuron", shuronTarget]);
+  const shuronMetadata = await readDeckMetadata(shuronDirectory);
+  const shuronId = shuronMetadata.id;
+  assertGeneratedDeckId(shuronId, "Tsuchikawa Shuron template");
+  if (shuronMetadata.theme !== "tsuchikawa-shuron") {
+    throw new Error(
+      `Tsuchikawa Shuron theme mismatch: ${String(shuronMetadata.theme)}`,
+    );
+  }
+  await runSlide(["lint", shuronTarget, "--strict-editable", "--fail-on-warnings"]);
+
   const templateArchive = await createTemplateArchive();
   const templateServer = await startTemplateServer(templateArchive.data);
   try {
@@ -276,10 +296,10 @@ try {
       "--sha256",
       templateArchive.sha256,
     ]);
-    const templates = await runSlide(["template", "list"]);
-    if (!templates.includes("livetoon-official")) {
+    const installedTemplates = await runSlide(["template", "list"]);
+    if (!installedTemplates.includes("livetoon-official")) {
       throw new Error(
-        `Installed template list omitted livetoon-official: ${templates}`,
+        `Installed template list omitted livetoon-official: ${installedTemplates}`,
       );
     }
     const urlDeckTarget = "URL template smoke 日本語";
@@ -309,6 +329,8 @@ try {
     await runSlide(["export", deckTarget, "--format", "pptx"]);
     await readFile(path.join(installRoot, "dist", deckId, `${deckId}.pptx`));
   }
+  await runSlide(["export", shuronTarget, "--format", "pptx"]);
+  await readFile(path.join(installRoot, "dist", shuronId, `${shuronId}.pptx`));
   for (const publicArtifact of [
     "deck.ir.json",
     "diagnostics.json",

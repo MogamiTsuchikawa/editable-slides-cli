@@ -19,18 +19,20 @@ AIは初回準備、構成、Livetoonテーマでの制作、発表者原稿、�
 
 ## CLIで使う
 
-GitHub Actionsの`package` workflow、またはローカルの`npm pack`で作成した
-`.tgz`を導入すると、リポジトリをcloneせずに利用できます。
+公開後は、npmから1コマンドで導入し、リポジトリをcloneせずに利用できます。
 
 ```bash
-npm install --global ./livetoon-slide-cli-0.1.0.tgz
+npm install --global livetoon-slide
 slide setup
 slide new -t livetoon "資料名"
+slide new -t tsuchikawa-shuron "修士論文発表"
 slide dev "資料名" --open
 slide release "資料名"
 ```
 
 `livetoon`は同梱のLivetoonテンプレートで、`company`テーマを使います。
+`tsuchikawa-shuron`は青緑の帯と広い余白を使う修士論文発表向けの
+同梱テンプレートです。
 日本語の資料名はそのままフォルダ名と表示名になり、内部で必要な英数字のIDは
 自動で作られます。
 
@@ -45,14 +47,14 @@ slide new -t sales "営業提案資料"
 ZIPの構成、更新・削除、安全な登録方法は
 [`docs/cli-guide.md`](./docs/cli-guide.md#urlからテンプレートを追加する)を参照してください。
 
-公開範囲とライセンスの確認後は、同じpackageをnpmまたはGitHub Packagesから
-導入できるようにします。現時点では誤公開を防ぐためpackageを非公開設定にしています。
+初回公開前に試す場合は、GitHub Actionsの`package` workflow、またはローカルの
+`npm pack`で作成した`.tgz`を導入できます。ライセンスはMITです。
 
 配布用tarballをローカルで作る場合は次を実行します。
 
 ```bash
 npm run build:runtime
-npm pack --workspace=@livetoon/slide-cli
+npm pack --workspace=livetoon-slide
 ```
 
 公式LivetoonテンプレートのZIPとSHA-256を作る場合は、次を実行します。
@@ -76,7 +78,7 @@ mise trust
 mise run setup
 ```
 
-`mise run setup`はNode.js 24.0.1、npm 11.3.0、npm依存、Playwright Chromium、Poppler 26.07.0を準備します。Popplerはmise配下へ隔離されるため、HomebrewのXpdfを`brew unlink`する必要はありません。普段のコマンドは`mise run ...`経由で実行してください。
+`mise run setup`はNode.js 24.0.1、npm 11.5.1、npm依存、Playwright Chromium、Poppler 26.07.0を準備します。Popplerはmise配下へ隔離されるため、HomebrewのXpdfを`brew unlink`する必要はありません。普段のコマンドは`mise run ...`経由で実行してください。
 
 準備済み環境を後から再確認するときだけ`mise run doctor`を実行します。
 
@@ -95,6 +97,7 @@ PDFの出力をまとめて行います。
 
 ```bash
 mise exec -- npm run slide -- new -t livetoon "資料名"
+mise exec -- npm run slide -- new -t tsuchikawa-shuron "修士論文発表"
 mise exec -- npm run slide -- dev "資料名" --open
 mise exec -- npm run slide -- release "資料名"
 ```
@@ -129,6 +132,16 @@ AIが資料を作るときの判断基準は、[`companyTheme.authoring`](./them
 ```bash
 mise exec -- npm run slide -- dev decks/livetoon-theme --open
 mise exec -- npm run slide -- release decks/livetoon-theme
+```
+
+## Tsuchikawa Shuronテーマ
+
+修士論文発表用PowerPointの配色、中央のタイトル帯、上部の見出し帯、
+広い白地を、編集可能なネイティブ要素として移植しています。
+
+```bash
+mise exec -- npm run slide -- new -t tsuchikawa-shuron "修士論文発表"
+mise exec -- npm run slide -- release "修士論文発表"
 ```
 
 ## `deck.mdx`
