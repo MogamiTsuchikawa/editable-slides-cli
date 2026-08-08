@@ -25,7 +25,7 @@
     "dist"
   ],
   "bin": {
-    "slide": "./dist/bin/index.js"
+    "slide": "dist/bin/index.js"
   },
   "engines": {
     "node": ">=24"
