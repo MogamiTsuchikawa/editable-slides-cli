@@ -3,8 +3,8 @@ import {
   type ElementIR,
   type GroupElementIR,
   GroupElementIRSchema,
-} from "@livetoon/slide-deck-ir";
-import { defaultTheme } from "@livetoon/slide-theme-default";
+} from "@editable-slides/slide-deck-ir";
+import { defaultTheme } from "@editable-slides/slide-theme-default";
 import { describe, expect, it } from "vitest";
 
 import {

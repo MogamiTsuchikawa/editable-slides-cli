@@ -8,7 +8,7 @@ import type {
   TableStyleIR,
   TextAlignIR,
   TextStyleIR,
-} from "@livetoon/slide-deck-ir";
+} from "@editable-slides/slide-deck-ir";
 
 export type TypographyRole = keyof ResolvedThemeIR["typography"];
 

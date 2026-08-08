@@ -1,5 +1,5 @@
 {
-  "name": "@livetoon/slide-renderer-pptx",
+  "name": "@editable-slides/slide-renderer-pptx",
   "version": "0.1.0",
   "private": true,
   "type": "module",

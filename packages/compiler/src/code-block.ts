@@ -7,8 +7,8 @@ import {
   type TextElementIR,
   type TextRunIR,
   WIDE_CANVAS,
-} from "@livetoon/slide-deck-ir";
-import type { ThemeDefinition } from "@livetoon/slide-theme-default";
+} from "@editable-slides/slide-deck-ir";
+import type { ThemeDefinition } from "@editable-slides/slide-theme-default";
 import { contrastRatio } from "./accessibility.js";
 
 const SAFE_ID = /^[a-z0-9][a-z0-9_-]*$/;

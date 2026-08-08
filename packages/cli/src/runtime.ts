@@ -19,9 +19,10 @@ import {
   readDeckSourceConfig,
   resolveDeckEntry,
   serializeDeck,
-} from "@livetoon/slide-compiler";
-import type { DeckIR, Diagnostic, ElementIR } from "@livetoon/slide-deck-ir";
-import type { ThemeDefinition } from "@livetoon/slide-theme-default";
+} from "@editable-slides/slide-compiler";
+import type { DeckIR, Diagnostic, ElementIR } from "@editable-slides/slide-deck-ir";
+import type { ThemeDefinition } from "@editable-slides/slide-theme-default";
+import { loadDeclarativeTheme } from "./declarative-theme.js";
 import { type RunningStudio, startPackagedStudio } from "./studio-server.js";
 import { BUILT_IN_THEME_IDS, resolveBuiltInTheme } from "./themes.js";
 import { cliVersion } from "./version.js";
@@ -44,7 +45,7 @@ export function resolveRepositoryRoot(
 }
 
 export const repositoryRoot = resolveRepositoryRoot({
-  explicitRoot: process.env.LIVETOON_WORKSPACE_ROOT,
+  explicitRoot: process.env.EDITABLE_SLIDES_WORKSPACE_ROOT,
   initialDirectory: process.env.INIT_CWD,
   currentDirectory: process.cwd(),
 });
@@ -152,7 +153,7 @@ export async function compileArtifact(
         `.${path.basename(finalOutputDirectory)}.release-${randomUUID()}`,
       )
     : finalOutputDirectory;
-  const deckIrPath = path.join(deckDirectory, ".livetoon", "deck.ir.json");
+  const deckIrPath = path.join(deckDirectory, ".editable-slides", "deck.ir.json");
   const publicDeckIrPath = path.join(outputDirectory, "deck.ir.json");
   const diagnosticsPath = path.join(outputDirectory, "diagnostics.json");
   const publicDeck = sanitizeArtifactPaths(result.deck, {
@@ -338,9 +339,13 @@ export async function loadTheme(
   const builtIn = resolveBuiltInTheme(reference);
   if (builtIn) return builtIn;
 
-  if (process.env.LIVETOON_ALLOW_CUSTOM_THEME !== "1") {
+  if (reference === "./theme.json" || reference === "theme.json") {
+    return loadDeclarativeTheme(path.join(deckDirectory, "theme.json"));
+  }
+
+  if (process.env.EDITABLE_SLIDES_ALLOW_CUSTOM_THEME !== "1") {
     throw new Error(
-      `Custom theme "${reference}" is disabled because theme modules execute code. Use ${BUILT_IN_THEME_IDS.map((id) => `"${id}"`).join(", ")}. Set LIVETOON_ALLOW_CUSTOM_THEME=1 only for a theme you trust.`,
+      `Custom theme "${reference}" is disabled because theme modules execute code. Use ${BUILT_IN_THEME_IDS.map((id) => `"${id}"`).join(", ")}. Set EDITABLE_SLIDES_ALLOW_CUSTOM_THEME=1 only for a theme you trust.`,
     );
   }
 
@@ -381,7 +386,7 @@ export async function loadTheme(
   }
 
   throw new Error(
-    `Theme "${reference}" could not be loaded. Build a theme module that exports a ThemeDefinition, or use "company"/"default".`,
+    `Theme "${reference}" could not be loaded. Use "default", a validated ./theme.json, or a trusted theme module.`,
   );
 }
 

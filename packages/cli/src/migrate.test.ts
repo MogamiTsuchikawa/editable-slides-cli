@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { parseDeckMdx } from "@livetoon/slide-compiler";
+import { parseDeckMdx } from "@editable-slides/slide-compiler";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { migrateLegacyDeckSource } from "./migrate.js";

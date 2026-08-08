@@ -4,6 +4,7 @@ node_modules/
 # Build and generated artifacts
 dist/
 decks/*/dist/
+**/.editable-slides/
 **/.livetoon/
 coverage/
 output/

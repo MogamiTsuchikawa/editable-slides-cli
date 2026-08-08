@@ -1,6 +1,6 @@
 # Tsuchikawa Shuron theme
 
-`shuron-slide-base.pptx`のデザインを、Livetoon Slideで再利用できるTypeScriptテーマへ移植したものです。テーマIDは`tsuchikawa-shuron`です。
+`shuron-slide-base.pptx`のデザインを、Editable Slidesで再利用できるTypeScriptテーマへ移植したものです。テーマIDは`tsuchikawa-shuron`です。
 
 ## デザインの正本
 
@@ -54,5 +54,5 @@ theme: tsuchikawa-shuron
 ```ts
 import tsuchikawaShuronTheme, {
   tsuchikawaShuronTheme as namedTheme,
-} from "@livetoon/slide-theme-tsuchikawa-shuron";
+} from "@editable-slides/slide-theme-tsuchikawa-shuron";
 ```

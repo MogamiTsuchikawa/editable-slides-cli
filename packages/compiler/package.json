@@ -1,5 +1,5 @@
 {
-  "name": "@livetoon/slide-compiler",
+  "name": "@editable-slides/slide-compiler",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -18,8 +18,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@livetoon/slide-deck-ir": "*",
-    "@livetoon/slide-theme-default": "*",
+    "@editable-slides/slide-deck-ir": "*",
+    "@editable-slides/slide-theme-default": "*",
     "acorn": "^8.15.0",
     "mdast-util-to-string": "^4.0.0",
     "remark-frontmatter": "^5.0.0",
@@ -30,7 +30,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@livetoon/slide-theme-company": "*",
+    "@editable-slides/slide-theme-company": "*",
     "@types/mdast": "^4.0.4",
     "@types/node": "^24.10.0",
     "typescript": "^5.9.3",

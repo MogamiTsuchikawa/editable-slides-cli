@@ -4,12 +4,12 @@ import type {
   MasterIR,
   ShapeElementIR,
   TextStyleIR,
-} from "@livetoon/slide-deck-ir";
+} from "@editable-slides/slide-deck-ir";
 import {
   defaultTheme,
   type LayoutDefinition,
   type LayoutSlotDefinition,
-} from "@livetoon/slide-theme-default";
+} from "@editable-slides/slide-theme-default";
 
 /**
  * Color scheme extracted from shuron-slide-base.pptx.
@@ -38,7 +38,7 @@ const colors = {
 } as const;
 
 const sourceLocation = {
-  file: "@livetoon/slide-theme-tsuchikawa-shuron",
+  file: "@editable-slides/slide-theme-tsuchikawa-shuron",
   line: 1,
   column: 1,
 } as const;

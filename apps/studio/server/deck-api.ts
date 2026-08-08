@@ -47,14 +47,14 @@ async function resolveDeckFiles(
 ): Promise<DeckFiles | undefined> {
   if (!safeDeckId(deckId)) return undefined;
 
-  const configuredDeckDirectory = process.env.LIVETOON_DECK_DIR;
-  const configuredIr = process.env.LIVETOON_DECK_IR;
+  const configuredDeckDirectory = process.env.EDITABLE_SLIDES_DECK_DIR;
+  const configuredIr = process.env.EDITABLE_SLIDES_DECK_IR;
   const deckDirectory = configuredDeckDirectory
     ? resolve(configuredDeckDirectory)
     : resolve(repositoryRoot, "decks", deckId);
   const deckCandidates = [
     configuredIr ? resolve(configuredIr) : undefined,
-    join(deckDirectory, ".livetoon", "deck.ir.json"),
+    join(deckDirectory, ".editable-slides", "deck.ir.json"),
     join(deckDirectory, "deck.ir.json"),
     resolve(repositoryRoot, "dist", deckId, "deck.ir.json"),
   ].filter((path): path is string => Boolean(path));
@@ -387,7 +387,7 @@ export async function handleApiRequest(
   if (!files) {
     json(response, 404, {
       error: `Deck "${deckId}" was not found.`,
-      hint: "Set LIVETOON_DECK_DIR / LIVETOON_DECK_IR or compile to dist/<deckId>/deck.ir.json.",
+      hint: "Set EDITABLE_SLIDES_DECK_DIR / EDITABLE_SLIDES_DECK_IR or compile to dist/<deckId>/deck.ir.json.",
     });
     return true;
   }

@@ -1,4 +1,4 @@
-# Livetoon Slide Claude Code entrypoint
+# Editable Slides Claude Code entrypoint
 
 @AGENTS.md
 @AI_PLAYBOOK.md

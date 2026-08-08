@@ -1,4 +1,4 @@
-import { type DeckIR, parseDeckIR } from "@livetoon/slide-deck-ir";
+import { type DeckIR, parseDeckIR } from "@editable-slides/slide-deck-ir";
 import { type OverrideDocument, parseOverrideDocument } from "./overrides.js";
 
 export interface DeckSourceState {

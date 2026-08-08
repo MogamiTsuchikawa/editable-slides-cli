@@ -1,4 +1,9 @@
-import type { DeckIR, ElementIR, FrameIR, SlideIR } from "@livetoon/slide-deck-ir";
+import type {
+  DeckIR,
+  ElementIR,
+  FrameIR,
+  SlideIR,
+} from "@editable-slides/slide-deck-ir";
 import {
   type CSSProperties,
   Fragment,
@@ -1822,7 +1827,7 @@ export function SlideCanvas({
         fontFamily: "var(--lt-font-body, sans-serif)",
       }}
     >
-      {deck ? <style data-livetoon-fonts>{fontFaceRules(deck)}</style> : null}
+      {deck ? <style data-editable-slides-fonts>{fontFaceRules(deck)}</style> : null}
       <div className="lt-master-elements" data-master-id={slide.masterId}>
         {masterElements.map((element) => (
           <ElementView key={element.id} element={element} isMaster mode={mode} />

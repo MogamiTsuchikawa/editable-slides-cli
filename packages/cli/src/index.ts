@@ -25,7 +25,7 @@ import {
 } from "./commands.js";
 import { cliVersion } from "./version.js";
 
-const HELP = `Livetoon Slide — 編集可能なPPTX・PDFを生成するCLI
+const HELP = `Editable Slides — 編集可能なPPTX・PDFを生成するCLI
 
 使い方:
   slide new [-t <template>] <deck-dir> [--id <id>] [--title <title>] [--theme <path>]
@@ -54,7 +54,7 @@ const COMMAND_HELP: Record<string, string> = {
   new: `slide new [-t <template>] <deck-dir> [options]
 
 新しい資料のひな形を作成します。
-  -t, --template <id>  使用するテンプレート（既定: livetoon）
+  -t, --template <id>  使用するテンプレート（既定: default）
   --id <id>            資料の固有ID（既定: フォルダ名から自動生成）
   --title <title>      表示タイトル（既定: フォルダ名）
   --theme <theme>      テンプレートのテーマを上書きする

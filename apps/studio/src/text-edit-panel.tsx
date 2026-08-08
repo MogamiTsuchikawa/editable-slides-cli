@@ -1,4 +1,4 @@
-import type { TextElementIR } from "@livetoon/slide-deck-ir";
+import type { TextElementIR } from "@editable-slides/slide-deck-ir";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { saveElementText } from "./api.js";
 import { isTextSaveShortcut, textElementToEditableMarkdown } from "./text-edit.js";

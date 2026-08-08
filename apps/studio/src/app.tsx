@@ -1,9 +1,9 @@
-import type { DeckIR, SlideIR } from "@livetoon/slide-deck-ir";
+import type { DeckIR, SlideIR } from "@editable-slides/slide-deck-ir";
 import {
   DeckReadiness,
   PrintDeck,
   ResponsiveSlide,
-} from "@livetoon/slide-renderer-react";
+} from "@editable-slides/slide-renderer-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EditorView } from "./editor.js";
 import type { OverrideDocument } from "./overrides.js";
@@ -328,8 +328,9 @@ function ErrorView({
         <h1>{deckId}</h1>
         <p>{error}</p>
         <code>
-          LIVETOON_DECK_DIR=/path/to/deck LIVETOON_DECK_IR=/path/to/deck.ir.json npm run
-          dev --workspace=@livetoon/slide-studio
+          EDITABLE_SLIDES_DECK_DIR=/path/to/deck
+          EDITABLE_SLIDES_DECK_IR=/path/to/deck.ir.json npm run dev
+          --workspace=@editable-slides/slide-studio
         </code>
         <button onClick={retry} type="button">
           Retry
@@ -389,7 +390,7 @@ export function App() {
 
   useEffect(() => {
     if (!("BroadcastChannel" in window)) return;
-    const syncChannel = new BroadcastChannel(`livetoon-slide:${route.deckId}`);
+    const syncChannel = new BroadcastChannel(`editable-slides-cli:${route.deckId}`);
     channel.current = syncChannel;
     syncChannel.onmessage = (event: MessageEvent<SyncMessage>) => {
       const message = event.data;

@@ -2,7 +2,7 @@ import {
   type ResolvedThemeIR,
   ResolvedThemeIRSchema,
   type TextStyleIR,
-} from "@livetoon/slide-deck-ir";
+} from "@editable-slides/slide-deck-ir";
 
 import type {
   LayoutDefinition,
@@ -43,7 +43,7 @@ function textStyle(
 
 const themeIR: ResolvedThemeIR = ResolvedThemeIRSchema.parse({
   id: "default",
-  name: "Livetoon Default",
+  name: "Default",
   colors,
   fonts: {
     heading: {

@@ -233,7 +233,7 @@ export async function readSecureDeckEntryFile(
   const deckDirectory = path.dirname(absoluteEntryPath);
   return readSecureDeckFile({
     deckDirectory,
-    sourcePath: path.join(deckDirectory, ".livetoon-entry"),
+    sourcePath: path.join(deckDirectory, ".editable-slides-entry"),
     reference: path.basename(absoluteEntryPath),
     allowedExtensions: DECK_SOURCE_FILE_POLICIES,
     defaultMaxBytes: MAX_DECK_SOURCE_BYTES,

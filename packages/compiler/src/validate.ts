@@ -1,6 +1,6 @@
-import type { Diagnostic, ElementIR, SlideIR } from "@livetoon/slide-deck-ir";
-import { WIDE_CANVAS } from "@livetoon/slide-deck-ir";
-import type { ThemeDefinition } from "@livetoon/slide-theme-default";
+import type { Diagnostic, ElementIR, SlideIR } from "@editable-slides/slide-deck-ir";
+import { WIDE_CANVAS } from "@editable-slides/slide-deck-ir";
+import type { ThemeDefinition } from "@editable-slides/slide-theme-default";
 
 import { validateSlideAccessibility } from "./accessibility.js";
 import { createDiagnostic } from "./diagnostics.js";

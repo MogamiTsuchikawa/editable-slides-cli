@@ -2,7 +2,7 @@ import {
   type LayoutOverrides,
   LayoutOverridesSchema,
   parseDeckMdx,
-} from "@livetoon/slide-compiler";
+} from "@editable-slides/slide-compiler";
 import { parseDocument } from "yaml";
 
 interface Point {

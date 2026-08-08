@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
 
-import type { DeckIR } from "@livetoon/slide-deck-ir";
+import type { DeckIR } from "@editable-slides/slide-deck-ir";
 
 function normalizeForHash(value: unknown, deckDirectory: string): unknown {
   if (Array.isArray(value)) {

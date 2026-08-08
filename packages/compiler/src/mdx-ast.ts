@@ -1,4 +1,4 @@
-import type { SourceLocation } from "@livetoon/slide-deck-ir";
+import type { SourceLocation } from "@editable-slides/slide-deck-ir";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkMdx from "remark-mdx";
 import remarkParse from "remark-parse";

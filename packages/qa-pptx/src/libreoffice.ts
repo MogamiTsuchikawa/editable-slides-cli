@@ -34,7 +34,7 @@ export async function smokeTestPptxWithLibreOffice(
     };
   }
 
-  const directory = await mkdtemp(path.join(tmpdir(), "livetoon-slide-lo-"));
+  const directory = await mkdtemp(path.join(tmpdir(), "editable-slides-cli-lo-"));
   const inputPath = path.join(directory, "deck.pptx");
   const outputPath = path.join(directory, "deck.pdf");
   try {

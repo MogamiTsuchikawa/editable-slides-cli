@@ -1,4 +1,4 @@
-import type { DeckIR } from "@livetoon/slide-deck-ir";
+import type { DeckIR } from "@editable-slides/slide-deck-ir";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type DeckSourceState,

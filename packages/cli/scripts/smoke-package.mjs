@@ -12,7 +12,9 @@ import { createTemplateArchive } from "./build-template-archive.mjs";
 const execFileAsync = promisify(execFile);
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryRoot = path.resolve(packageRoot, "../..");
-const temporaryRoot = await mkdtemp(path.join(tmpdir(), "livetoon-slide-package-"));
+const temporaryRoot = await mkdtemp(
+  path.join(tmpdir(), "editable-slides-cli-package-"),
+);
 const installRoot = path.join(temporaryRoot, "consumer");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
@@ -22,10 +24,8 @@ function isAllowedPackageFile(file) {
     file === "README.md" ||
     file === "LICENSE" ||
     file === "dist/bin/index.js" ||
-    file.startsWith("dist/assets/") ||
     file.startsWith("dist/studio/") ||
-    file.startsWith("dist/templates/livetoon/") ||
-    file.startsWith("dist/templates/tsuchikawa-shuron/")
+    file.startsWith("dist/templates/default/")
   );
 }
 
@@ -179,6 +179,29 @@ try {
     installRoot,
   );
 
+  const metadata = JSON.parse(
+    await readFile(path.join(packageRoot, "package.json"), "utf8"),
+  );
+  const installedPackageRoot = path.join(
+    installRoot,
+    "node_modules",
+    ...metadata.name.split("/"),
+  );
+  const forbiddenPublicIdentifiers = /livetoon|tsuchikawa-shuron/i;
+  for (const file of packedFiles) {
+    const filePath = file?.path;
+    if (
+      typeof filePath !== "string" ||
+      !/[.](?:css|html|js|json|md|mdx|svg)$/i.test(filePath)
+    ) {
+      continue;
+    }
+    const contents = await readFile(path.join(installedPackageRoot, filePath), "utf8");
+    if (forbiddenPublicIdentifiers.test(contents)) {
+      throw new Error(`Private identifier was bundled in ${filePath}.`);
+    }
+  }
+
   const slide = path.join(
     installRoot,
     "node_modules",
@@ -186,20 +209,10 @@ try {
     process.platform === "win32" ? "slide.cmd" : "slide",
   );
   await access(slide);
-  const metadata = JSON.parse(
-    await readFile(path.join(packageRoot, "package.json"), "utf8"),
-  );
-  const installedBinary = path.join(
-    installRoot,
-    "node_modules",
-    ...metadata.name.split("/"),
-    "dist",
-    "bin",
-    "index.js",
-  );
+  const installedBinary = path.join(installedPackageRoot, "dist", "bin", "index.js");
   const slideEnvironment = {
     ...process.env,
-    LIVETOON_SLIDE_DATA_HOME: path.join(temporaryRoot, "slide-data"),
+    EDITABLE_SLIDES_DATA_HOME: path.join(temporaryRoot, "slide-data"),
   };
   const runSlide = (args, options = {}) =>
     run(process.execPath, [installedBinary, ...args], installRoot, {
@@ -256,7 +269,7 @@ try {
 
   const deckTarget = "Package smoke 日本語";
   const deckDirectory = path.join(installRoot, deckTarget);
-  await runSlide(["new", "-t", "livetoon", deckTarget]);
+  await runSlide(["new", deckTarget]);
   const deckMetadata = await readDeckMetadata(deckDirectory);
   const deckId = deckMetadata.id;
   assertGeneratedDeckId(deckId, "Built-in template");
@@ -266,23 +279,14 @@ try {
   await runSlide(["lint", deckTarget, "--strict-editable", "--fail-on-warnings"]);
 
   const templates = await runSlide(["template", "list"]);
-  for (const builtIn of ["livetoon", "tsuchikawa-shuron"]) {
-    if (!templates.includes(`${builtIn}\tbuilt-in`)) {
-      throw new Error(`Installed template list omitted ${builtIn}: ${templates}`);
+  if (!templates.includes("default\tbuilt-in")) {
+    throw new Error(`Installed template list omitted default: ${templates}`);
+  }
+  for (const privateTemplate of ["livetoon\tbuilt-in", "tsuchikawa-shuron\tbuilt-in"]) {
+    if (templates.includes(privateTemplate)) {
+      throw new Error(`Private template was bundled: ${privateTemplate}`);
     }
   }
-  const shuronTarget = "土川修論スモーク";
-  const shuronDirectory = path.join(installRoot, shuronTarget);
-  await runSlide(["new", "-t", "tsuchikawa-shuron", shuronTarget]);
-  const shuronMetadata = await readDeckMetadata(shuronDirectory);
-  const shuronId = shuronMetadata.id;
-  assertGeneratedDeckId(shuronId, "Tsuchikawa Shuron template");
-  if (shuronMetadata.theme !== "tsuchikawa-shuron") {
-    throw new Error(
-      `Tsuchikawa Shuron theme mismatch: ${String(shuronMetadata.theme)}`,
-    );
-  }
-  await runSlide(["lint", shuronTarget, "--strict-editable", "--fail-on-warnings"]);
 
   const templateArchive = await createTemplateArchive();
   const templateServer = await startTemplateServer(templateArchive.data);
@@ -329,8 +333,6 @@ try {
     await runSlide(["export", deckTarget, "--format", "pptx"]);
     await readFile(path.join(installRoot, "dist", deckId, `${deckId}.pptx`));
   }
-  await runSlide(["export", shuronTarget, "--format", "pptx"]);
-  await readFile(path.join(installRoot, "dist", shuronId, `${shuronId}.pptx`));
   for (const publicArtifact of [
     "deck.ir.json",
     "diagnostics.json",
@@ -366,7 +368,7 @@ try {
       studio,
     );
     const html = await response.text();
-    if (!html.includes("Livetoon Slide Studio")) {
+    if (!html.includes("Editable Slides Studio")) {
       throw new Error("Installed Studio did not serve its application shell.");
     }
     const deckResponse = await waitForUrl(

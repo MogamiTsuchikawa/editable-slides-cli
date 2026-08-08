@@ -1,4 +1,4 @@
-import type { SlideIR, TableElementIR } from "@livetoon/slide-deck-ir";
+import type { SlideIR, TableElementIR } from "@editable-slides/slide-deck-ir";
 import { describe, expect, it } from "vitest";
 
 import { applyLayoutOverrides } from "./overrides.js";

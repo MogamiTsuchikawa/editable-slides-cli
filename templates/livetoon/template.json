@@ -4,6 +4,6 @@
   "name": "Livetoon",
   "version": "1.0.0",
   "entry": "deck.mdx",
-  "theme": "company",
+  "theme": "./theme.json",
   "description": "Livetoonテーマの基本構成から資料を作成します。"
 }

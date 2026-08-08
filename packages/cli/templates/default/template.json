@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "default",
+  "name": "Default",
+  "version": "1.0.0",
+  "entry": "deck.mdx",
+  "theme": "default",
+  "description": "白地を基調とした汎用テンプレートです。"
+}

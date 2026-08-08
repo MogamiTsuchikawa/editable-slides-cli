@@ -3,7 +3,7 @@ import {
   type ElementIR,
   MAX_TABLE_CELL_SPAN,
   validateChartContract,
-} from "@livetoon/slide-deck-ir";
+} from "@editable-slides/slide-deck-ir";
 import { useEffect, useState } from "react";
 
 import { type DeckSourceState, saveStructuredData } from "./api.js";

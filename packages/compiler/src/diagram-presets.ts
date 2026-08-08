@@ -9,8 +9,8 @@ import {
   type TextElementIR,
   type TextStyleIR,
   WIDE_CANVAS,
-} from "@livetoon/slide-deck-ir";
-import type { ThemeDefinition } from "@livetoon/slide-theme-default";
+} from "@editable-slides/slide-deck-ir";
+import type { ThemeDefinition } from "@editable-slides/slide-theme-default";
 
 const SAFE_ID = /^[a-z0-9][a-z0-9_-]*$/;
 const COLOR = /^#[0-9a-f]{6}$/i;

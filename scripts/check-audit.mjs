@@ -68,7 +68,7 @@ if (accepted.length > 0) {
     [
       "Release audit OK with a temporary, exact exception:",
       "- image-size ICNS/JXL/HEIF denial-of-service advisories have no patched release",
-      "- Livetoon Slide rejects those file extensions before image parsing",
+      "- Editable Slides rejects those file extensions before image parsing",
       "- any new high/critical advisory still fails this check",
       "",
     ].join("\n"),

@@ -12,7 +12,7 @@ const expectedVersion = rootPackage.version;
 const failures = [];
 const publicPackage = await readJson("packages/cli/package.json");
 
-if (publicPackage.name !== "livetoon-slide") {
+if (publicPackage.name !== "editable-slides-cli") {
   failures.push(`public package name is ${publicPackage.name ?? "missing"}`);
 }
 if (publicPackage.private === true) {
@@ -29,7 +29,7 @@ if (publicPackage.publishConfig?.registry !== "https://registry.npmjs.org/") {
 }
 if (
   publicPackage.repository?.url !==
-  "git+https://github.com/MogamiTsuchikawa/livetoon-slide.git"
+  "git+https://github.com/MogamiTsuchikawa/editable-slides-cli.git"
 ) {
   failures.push(
     "public package repository metadata does not match the release repository",

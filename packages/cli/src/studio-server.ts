@@ -194,16 +194,17 @@ export async function startPackagedStudio(
 ): Promise<RunningStudio> {
   const root = await studioRoot();
   const eventStreams = new Set<ServerResponse>();
-  const previousDeckDirectory = process.env.LIVETOON_DECK_DIR;
-  const previousDeckIr = process.env.LIVETOON_DECK_IR;
+  const previousDeckDirectory = process.env.EDITABLE_SLIDES_DECK_DIR;
+  const previousDeckIr = process.env.EDITABLE_SLIDES_DECK_IR;
   const restoreEnvironment = () => {
-    if (previousDeckDirectory === undefined) delete process.env.LIVETOON_DECK_DIR;
-    else process.env.LIVETOON_DECK_DIR = previousDeckDirectory;
-    if (previousDeckIr === undefined) delete process.env.LIVETOON_DECK_IR;
-    else process.env.LIVETOON_DECK_IR = previousDeckIr;
+    if (previousDeckDirectory === undefined)
+      delete process.env.EDITABLE_SLIDES_DECK_DIR;
+    else process.env.EDITABLE_SLIDES_DECK_DIR = previousDeckDirectory;
+    if (previousDeckIr === undefined) delete process.env.EDITABLE_SLIDES_DECK_IR;
+    else process.env.EDITABLE_SLIDES_DECK_IR = previousDeckIr;
   };
-  process.env.LIVETOON_DECK_DIR = artifact.deckDirectory;
-  process.env.LIVETOON_DECK_IR = artifact.deckIrPath;
+  process.env.EDITABLE_SLIDES_DECK_DIR = artifact.deckDirectory;
+  process.env.EDITABLE_SLIDES_DECK_IR = artifact.deckIrPath;
 
   const server = createServer((request, response) => {
     applySecurityHeaders(response);

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import type { Diagnostic } from "@livetoon/slide-deck-ir";
+import type { Diagnostic } from "@editable-slides/slide-deck-ir";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkMdx from "remark-mdx";
 import remarkParse from "remark-parse";

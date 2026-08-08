@@ -1,4 +1,8 @@
-import type { ElementIR, TextElementIR, TextRunIR } from "@livetoon/slide-deck-ir";
+import type {
+  ElementIR,
+  TextElementIR,
+  TextRunIR,
+} from "@editable-slides/slide-deck-ir";
 
 function escapeMarkdownText(text: string): string {
   return text

@@ -7,8 +7,8 @@ import {
   DECK_IR_SCHEMA_VERSION,
   type DeckIR,
   WIDE_CANVAS,
-} from "@livetoon/slide-deck-ir";
-import { defaultTheme } from "@livetoon/slide-theme-default";
+} from "@editable-slides/slide-deck-ir";
+import { defaultTheme } from "@editable-slides/slide-theme-default";
 import pixelmatch from "pixelmatch";
 import { type Browser, chromium, type Page } from "playwright";
 import { PNG } from "pngjs";
@@ -244,7 +244,7 @@ beforeAll(async () => {
   temporaryDirectory = await mkdtemp(join(tmpdir(), "livetoon-studio-e2e-"));
   const sourcePath = join(temporaryDirectory, "slides", "intro.mdx");
   const assetPath = join(temporaryDirectory, "assets", "hero.svg");
-  const deckIrPath = join(temporaryDirectory, ".livetoon", "deck.ir.json");
+  const deckIrPath = join(temporaryDirectory, ".editable-slides", "deck.ir.json");
   overridePath = join(temporaryDirectory, "layout.overrides.json");
 
   await Promise.all([
@@ -266,10 +266,10 @@ beforeAll(async () => {
     "utf8",
   );
 
-  previousDeckDirectory = process.env.LIVETOON_DECK_DIR;
-  previousDeckIr = process.env.LIVETOON_DECK_IR;
-  process.env.LIVETOON_DECK_DIR = temporaryDirectory;
-  process.env.LIVETOON_DECK_IR = deckIrPath;
+  previousDeckDirectory = process.env.EDITABLE_SLIDES_DECK_DIR;
+  previousDeckIr = process.env.EDITABLE_SLIDES_DECK_IR;
+  process.env.EDITABLE_SLIDES_DECK_DIR = temporaryDirectory;
+  process.env.EDITABLE_SLIDES_DECK_IR = deckIrPath;
 
   const configFile = fileURLToPath(new URL("../vite.config.ts", import.meta.url));
   server = await createServer({
@@ -316,10 +316,10 @@ afterAll(async () => {
   await browser?.close();
   await server?.close();
 
-  if (previousDeckDirectory === undefined) delete process.env.LIVETOON_DECK_DIR;
-  else process.env.LIVETOON_DECK_DIR = previousDeckDirectory;
-  if (previousDeckIr === undefined) delete process.env.LIVETOON_DECK_IR;
-  else process.env.LIVETOON_DECK_IR = previousDeckIr;
+  if (previousDeckDirectory === undefined) delete process.env.EDITABLE_SLIDES_DECK_DIR;
+  else process.env.EDITABLE_SLIDES_DECK_DIR = previousDeckDirectory;
+  if (previousDeckIr === undefined) delete process.env.EDITABLE_SLIDES_DECK_IR;
+  else process.env.EDITABLE_SLIDES_DECK_IR = previousDeckIr;
 
   if (temporaryDirectory) {
     await rm(temporaryDirectory, { recursive: true, force: true });

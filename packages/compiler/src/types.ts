@@ -1,5 +1,10 @@
-import type { DeckIR, Diagnostic, ElementIR, SlideIR } from "@livetoon/slide-deck-ir";
-import type { ThemeDefinition } from "@livetoon/slide-theme-default";
+import type {
+  DeckIR,
+  Diagnostic,
+  ElementIR,
+  SlideIR,
+} from "@editable-slides/slide-deck-ir";
+import type { ThemeDefinition } from "@editable-slides/slide-theme-default";
 
 export interface DeckConfig {
   schemaVersion: 1;

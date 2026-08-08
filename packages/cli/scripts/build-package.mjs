@@ -30,13 +30,10 @@ await esbuild({
 await chmod(binaryPath, 0o755);
 
 await cp(
-  path.join(repositoryRoot, "themes", "company", "assets"),
-  path.join(outputRoot, "assets"),
+  path.join(packageRoot, "templates", "default"),
+  path.join(outputRoot, "templates", "default"),
   { recursive: true },
 );
-await cp(path.join(packageRoot, "templates"), path.join(outputRoot, "templates"), {
-  recursive: true,
-});
 
 await viteBuild({
   root: path.join(repositoryRoot, "apps", "studio"),

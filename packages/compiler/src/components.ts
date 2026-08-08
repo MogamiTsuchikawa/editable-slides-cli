@@ -30,12 +30,12 @@ import {
   type VideoElementIR,
   validateChartContract,
   validateTableGrid,
-} from "@livetoon/slide-deck-ir";
+} from "@editable-slides/slide-deck-ir";
 import type {
   LayoutDefinition,
   ThemeDefinition,
   TypographyRole,
-} from "@livetoon/slide-theme-default";
+} from "@editable-slides/slide-theme-default";
 
 import { validateVisualAlternative } from "./accessibility.js";
 import {

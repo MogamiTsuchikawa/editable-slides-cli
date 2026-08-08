@@ -1,4 +1,4 @@
-import type { Diagnostic, ImageBackgroundIR } from "@livetoon/slide-deck-ir";
+import type { Diagnostic, ImageBackgroundIR } from "@editable-slides/slide-deck-ir";
 
 import { createDiagnostic } from "./diagnostics.js";
 import {

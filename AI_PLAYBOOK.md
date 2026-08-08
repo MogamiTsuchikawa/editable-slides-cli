@@ -51,7 +51,7 @@ PPTXとPDFは、利用者が片方だけを指定しない限り両方作る。
 
 ## 2. 指定がない場合の既定値
 
-- theme: `company`
+- theme: `default`
 - canvas: `wide`
 - language: `ja-JP`
 - strictEditable: `true`
@@ -100,8 +100,7 @@ LibreOffice、PowerPoint、Notoフォントのwarningは、通常のPPTX/PDF出�
 
 ```bash
 mise exec -- npm run slide -- new decks/<slug> \
-  --title "<表示タイトル>" \
-  --theme company
+  --title "<表示タイトル>"
 ```
 
 作成済みディレクトリを上書きしない。利用者の素材は、チャット添付または
@@ -145,9 +144,10 @@ PDF、PPTX、DOCX、XLSXなどは利用可能な文書読取機能を優先し�
   利用者へ依頼する。
 - 機密名、社内数値、個人情報をWeb検索へ含めない。
 
-## 5. Livetoonレイアウトの選択
+## 5. Livetoonテーマを使う場合のレイアウト選択
 
-色、フォント、ロゴ、詳細な利用規則の正本は
+利用者がLivetoonテンプレートまたは`company`テーマを明示した場合だけ、
+色、フォント、ロゴ、詳細な利用規則の正本である
 `themes/company/src/index.ts`の`companyTheme.authoring`である。
 制作前に該当箇所を読むこと。
 

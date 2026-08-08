@@ -6,8 +6,8 @@ import {
   DECK_IR_SCHEMA_VERSION,
   type DeckIR,
   WIDE_CANVAS,
-} from "@livetoon/slide-deck-ir";
-import { defaultTheme } from "@livetoon/slide-theme-default";
+} from "@editable-slides/slide-deck-ir";
+import { defaultTheme } from "@editable-slides/slide-theme-default";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { updateTextElementSource } from "./text-source.js";
@@ -18,7 +18,7 @@ async function fixture(source: string, role: "title" | "body" = "body") {
   const directory = await mkdtemp(join(tmpdir(), "livetoon-text-source-"));
   temporaryDirectories.push(directory);
   const sourcePath = join(directory, "deck.mdx");
-  const deckIrPath = join(directory, ".livetoon", "deck.ir.json");
+  const deckIrPath = join(directory, ".editable-slides", "deck.ir.json");
   await mkdir(dirname(deckIrPath), { recursive: true });
   await writeFile(sourcePath, source, "utf8");
   const firstLine = source.split("\n")[0] ?? "";

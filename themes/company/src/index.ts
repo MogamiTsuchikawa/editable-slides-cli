@@ -6,12 +6,12 @@ import type {
   ShapeElementIR,
   TextElementIR,
   TextStyleIR,
-} from "@livetoon/slide-deck-ir";
+} from "@editable-slides/slide-deck-ir";
 import {
   defaultTheme,
   type LayoutDefinition,
   type LayoutSlotDefinition,
-} from "@livetoon/slide-theme-default";
+} from "@editable-slides/slide-theme-default";
 
 import { companyAssets } from "./assets.js";
 
@@ -32,7 +32,7 @@ const colors = {
 } as const;
 
 const sourceLocation = {
-  file: "@livetoon/slide-theme-company",
+  file: "@editable-slides/slide-theme-company",
   line: 1,
   column: 1,
 } as const;

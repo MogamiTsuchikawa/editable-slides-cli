@@ -18,8 +18,8 @@ function shouldNotify(filePath: string): "deck" | "overrides" | undefined {
 }
 
 function configureWatcher(server: ViteDevServer, repositoryRoot: string): void {
-  const configuredDeckDirectory = process.env.LIVETOON_DECK_DIR;
-  const configuredIr = process.env.LIVETOON_DECK_IR;
+  const configuredDeckDirectory = process.env.EDITABLE_SLIDES_DECK_DIR;
+  const configuredIr = process.env.EDITABLE_SLIDES_DECK_IR;
   server.watcher.add([
     resolve(repositoryRoot, "decks"),
     resolve(repositoryRoot, "dist"),
@@ -39,7 +39,7 @@ function configureWatcher(server: ViteDevServer, repositoryRoot: string): void {
 
 export function deckApiPlugin(repositoryRoot: string): Plugin {
   return {
-    name: "livetoon-slide-deck-api",
+    name: "editable-slides-cli-deck-api",
     configureServer(server) {
       configureWatcher(server, repositoryRoot);
       server.middlewares.use((request, response, next) => {

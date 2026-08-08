@@ -1,4 +1,4 @@
-# Livetoon Slide
+# Editable Slides
 
 `deck.mdx` 1ファイルを内容と発表者原稿の正本として、ブラウザ上の編集、編集可能なPPTX、PDFを同じDeckIRから生成するスライド制作基盤です。Studioで手動調整した位置とサイズだけは、補助ファイルの`layout.overrides.json`へ保存します。
 
@@ -9,7 +9,7 @@
 
 > 営業部の新人向けに、生成AIを安全に使う方法を説明するスライドを作って。
 
-AIは初回準備、構成、Livetoonテーマでの制作、発表者原稿、全ページの見た目確認、
+AIは初回準備、構成、選択したテーマでの制作、発表者原稿、全ページの見た目確認、
 編集可能なPPTXとPDFの出力まで行います。レイアウト、フォント、保存形式などを
 利用者へ質問しない運用ルールを`AGENTS.md`、`CLAUDE.md`、
 `AI_PLAYBOOK.md`に用意しています。
@@ -22,17 +22,15 @@ AIは初回準備、構成、Livetoonテーマでの制作、発表者原稿、�
 公開後は、npmから1コマンドで導入し、リポジトリをcloneせずに利用できます。
 
 ```bash
-npm install --global livetoon-slide
+npm install --global editable-slides-cli
 slide setup
-slide new -t livetoon "資料名"
-slide new -t tsuchikawa-shuron "修士論文発表"
+slide new "資料名"
 slide dev "資料名" --open
 slide release "資料名"
 ```
 
-`livetoon`は同梱のLivetoonテンプレートで、`company`テーマを使います。
-`tsuchikawa-shuron`は青緑の帯と広い余白を使う修士論文発表向けの
-同梱テンプレートです。
+標準では中立な`default`テンプレートを使います。明示する場合は
+`slide new -t default "資料名"`と指定できます。
 日本語の資料名はそのままフォルダ名と表示名になり、内部で必要な英数字のIDは
 自動で作られます。
 
@@ -54,17 +52,20 @@ ZIPの構成、更新・削除、安全な登録方法は
 
 ```bash
 npm run build:runtime
-npm pack --workspace=livetoon-slide
+npm pack --workspace=editable-slides-cli
 ```
 
-公式LivetoonテンプレートのZIPとSHA-256を作る場合は、次を実行します。
+LivetoonテンプレートのZIPとSHA-256を作る担当者は、次を実行します。
 
 ```bash
 npm run build:template
 ```
 
-成果物は`artifacts/templates/`へ生成されます。ZIP自体は原本と重複するため
-Git管理せず、GitHub Actionsの配布物または将来のGitHub Releaseへ掲載します。
+成果物は`artifacts/templates/`へ生成されます。Livetoonおよび
+`tsuchikawa-shuron`のテンプレート原本はリポジトリ直下の`templates/`に残しますが、
+npm packageには含めません。会社テーマは実行コードではない検証可能な
+`theme.json`としてZIP側へ入ります。必要な利用者へはS3などの管理されたURLで配布し、
+`slide template add`で明示的に登録します。
 
 初回準備、主なコマンド、困ったときの対処は、
 [`docs/cli-guide.md`](./docs/cli-guide.md)を参照してください。
@@ -96,8 +97,7 @@ mise run test:visual  # Web視覚回帰
 PDFの出力をまとめて行います。
 
 ```bash
-mise exec -- npm run slide -- new -t livetoon "資料名"
-mise exec -- npm run slide -- new -t tsuchikawa-shuron "修士論文発表"
+mise exec -- npm run slide -- new "資料名"
 mise exec -- npm run slide -- dev "資料名" --open
 mise exec -- npm run slide -- release "資料名"
 ```
@@ -140,7 +140,8 @@ mise exec -- npm run slide -- release decks/livetoon-theme
 広い白地を、編集可能なネイティブ要素として移植しています。
 
 ```bash
-mise exec -- npm run slide -- new -t tsuchikawa-shuron "修士論文発表"
+mise exec -- npm run slide -- template add https://templates.example.com/thesis.zip --name thesis
+mise exec -- npm run slide -- new -t thesis "修士論文発表"
 mise exec -- npm run slide -- release "修士論文発表"
 ```
 

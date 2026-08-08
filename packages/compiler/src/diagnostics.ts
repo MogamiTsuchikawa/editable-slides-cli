@@ -2,7 +2,7 @@ import type {
   Diagnostic,
   DiagnosticSeverity,
   SourceLocation,
-} from "@livetoon/slide-deck-ir";
+} from "@editable-slides/slide-deck-ir";
 
 export interface DiagnosticInput {
   severity: DiagnosticSeverity;

@@ -1,4 +1,4 @@
-import type { SlideIR } from "@livetoon/slide-deck-ir";
+import type { SlideIR } from "@editable-slides/slide-deck-ir";
 import { useEffect, useRef, useState } from "react";
 
 import {

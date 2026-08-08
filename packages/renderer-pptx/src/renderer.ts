@@ -27,7 +27,7 @@ import type {
   VideoElementIR,
 } from "./types.js";
 
-const LAYOUT_NAME = "LIVETOON_WIDE";
+const LAYOUT_NAME = "EDITABLE_SLIDES_WIDE";
 const DEFAULT_MASTER = "LT_DEFAULT_MASTER";
 const DEFAULT_WIDTH_INCH = 13.333333;
 const DEFAULT_HEIGHT_INCH = 7.5;
@@ -2215,7 +2215,7 @@ function addMediaTrackRelationship(
 
 function deterministicTrackGuid(adjustment: MediaCaptionAdjustment): string {
   const digest = createHash("sha256")
-    .update("livetoon-slide-media-caption\0")
+    .update("editable-slides-cli-media-caption\0")
     .update(adjustment.name)
     .update("\0")
     .update(adjustment.contentHash)

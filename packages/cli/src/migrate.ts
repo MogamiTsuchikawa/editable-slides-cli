@@ -6,7 +6,7 @@ import {
   DeckMdxConfigSchema,
   type SlideFrontmatter,
   SlideFrontmatterSchema,
-} from "@livetoon/slide-compiler";
+} from "@editable-slides/slide-compiler";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 const MAX_SOURCE_BYTES = 2 * 1024 * 1024;

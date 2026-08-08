@@ -1,16 +1,18 @@
 # 変更履歴
 
-ソースと同梱素材はMIT Licenseで公開する。
+公開npm packageに同梱するテンプレートは中立な`default`だけである。
 
 ## [Unreleased]
 
-- PowerPoint由来の青緑デザインを`tsuchikawa-shuron`組み込みテーマ・テンプレートとして追加。
-- 公開package名を`livetoon-slide`に確定し、npm Trusted Publishing向けの
+- PowerPoint由来の青緑デザインを`tsuchikawa-shuron`テーマ・テンプレート原本として追加。
+- 公開package名を`editable-slides-cli`に確定し、npm Trusted Publishing向けの
   tag release workflow、3 OS package検査、成果物の来歴証明を追加。
-- 同梱のLivetoonテンプレートから資料名だけで作成する操作と、HTTPS URLの
+- 中立な`default`テンプレートから資料名だけで作成する操作と、HTTPS URLの
   ZIPテンプレートを登録・一覧・削除する操作を追加。
-- 公式LivetoonテンプレートのZIPとSHA-256を再現可能に生成し、配布artifactへ
-  含める処理を追加。
+- LivetoonテンプレートのZIPとSHA-256を再現可能に生成し、会社テーマを検証可能な
+  `theme.json`としてZIPへ含める処理を追加。Livetoonと
+  `tsuchikawa-shuron`の原本はリポジトリ直下の`templates/`に置き、公開npmや
+  GitHub Releaseへは含めない。
 
 ## [0.1.0] - 2026-08-01
 

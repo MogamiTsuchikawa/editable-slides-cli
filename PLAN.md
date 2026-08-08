@@ -1,4 +1,4 @@
-# Livetoon Slide 実装計画
+# Editable Slides 実装計画
 
 - ステータス: Phase 0〜6.1 実装・検証済み（単一ファイル版Studio MVP）。Phase 7の社内パイロット前
 - 作成日: 2026-07-28
@@ -179,14 +179,14 @@ deck-ir
 
 パッケージ名は、初期実装では次に統一する。
 
-- `@livetoon/slide-deck-ir`
-- `@livetoon/slide-compiler`
-- `@livetoon/slide-theme-default`
-- `@livetoon/slide-renderer-react`
-- `@livetoon/slide-renderer-pptx`
-- `@livetoon/slide-exporter-pdf`
-- `@livetoon/slide-qa-pptx`
-- `@livetoon/slide-cli`
+- `@editable-slides/slide-deck-ir`
+- `@editable-slides/slide-compiler`
+- `@editable-slides/slide-theme-default`
+- `@editable-slides/slide-renderer-react`
+- `@editable-slides/slide-renderer-pptx`
+- `@editable-slides/slide-exporter-pdf`
+- `@editable-slides/slide-qa-pptx`
+- `@editable-slides/slide-cli`
 
 ## 6. オーサリング仕様
 

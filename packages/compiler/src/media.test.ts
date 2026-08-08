@@ -3,7 +3,7 @@ import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { defaultTheme } from "@livetoon/slide-theme-default";
+import { defaultTheme } from "@editable-slides/slide-theme-default";
 import { describe, expect, it } from "vitest";
 import {
   inspectIsoMedia,

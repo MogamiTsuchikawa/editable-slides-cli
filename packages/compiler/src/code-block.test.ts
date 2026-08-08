@@ -1,6 +1,6 @@
-import { GroupElementIRSchema } from "@livetoon/slide-deck-ir";
-import { companyTheme } from "@livetoon/slide-theme-company";
-import { defaultTheme } from "@livetoon/slide-theme-default";
+import { GroupElementIRSchema } from "@editable-slides/slide-deck-ir";
+import { companyTheme } from "@editable-slides/slide-theme-company";
+import { defaultTheme } from "@editable-slides/slide-theme-default";
 import { describe, expect, it } from "vitest";
 
 import { contrastRatio } from "./accessibility.js";

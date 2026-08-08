@@ -99,7 +99,7 @@ M4A音声（2.97秒）の再生、字幕トラック認識、選択・編集、�
 | YouTube等をonline mediaにする | PPTXを小さく保てる | 通信、認証、provider、PowerPoint版に依存する | P2のopt-in候補 |
 | poster画像から通常URLを開く | 最も互換性が高い | スライド内では再生できない | online mediaを実装する場合の必須fallback |
 
-PowerPointはローカル動画について埋め込みを既定とするため、Livetoon Slideも
+PowerPointはローカル動画について埋め込みを既定とするため、Editable Slidesも
 埋め込みを採用している。
 
 参考:

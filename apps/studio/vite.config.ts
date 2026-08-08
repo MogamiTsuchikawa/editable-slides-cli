@@ -10,19 +10,19 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: "@livetoon/slide-renderer-react/styles.css",
+        find: "@editable-slides/slide-renderer-react/styles.css",
         replacement: fileURLToPath(
           new URL("../../packages/renderer-react/styles.css", import.meta.url),
         ),
       },
       {
-        find: "@livetoon/slide-renderer-react",
+        find: "@editable-slides/slide-renderer-react",
         replacement: fileURLToPath(
           new URL("../../packages/renderer-react/src/index.ts", import.meta.url),
         ),
       },
       {
-        find: "@livetoon/slide-deck-ir",
+        find: "@editable-slides/slide-deck-ir",
         replacement: fileURLToPath(
           new URL("../../packages/deck-ir/src/index.ts", import.meta.url),
         ),

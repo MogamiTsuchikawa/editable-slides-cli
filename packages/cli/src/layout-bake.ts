@@ -4,8 +4,8 @@ import {
   type LayoutOverrides,
   LayoutOverridesSchema,
   parseDeckMdx,
-} from "@livetoon/slide-compiler";
-import { scaleTableDimensions } from "@livetoon/slide-deck-ir";
+} from "@editable-slides/slide-compiler";
+import { scaleTableDimensions } from "@editable-slides/slide-deck-ir";
 
 interface PositionPoint {
   line?: number;

@@ -4,13 +4,14 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { compileDeckDirectory } from "@livetoon/slide-compiler";
-import { companyTheme } from "@livetoon/slide-theme-company";
-import { tsuchikawaShuronTheme } from "@livetoon/slide-theme-tsuchikawa-shuron";
+import { compileDeckDirectory } from "@editable-slides/slide-compiler";
+import { defaultTheme } from "@editable-slides/slide-theme-default";
 import JSZip from "jszip";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { createTemplateArchive } from "../scripts/build-template-archive.mjs";
 import { newCommand } from "./commands.js";
+import { loadTheme } from "./runtime.js";
 import {
   addTemplateFromUrl,
   listTemplates,
@@ -21,13 +22,13 @@ import {
 } from "./templates.js";
 
 const temporaryDirectories: string[] = [];
-const originalDataHome = process.env.LIVETOON_SLIDE_DATA_HOME;
+const originalDataHome = process.env.EDITABLE_SLIDES_DATA_HOME;
 
 afterEach(async () => {
   if (originalDataHome === undefined) {
-    delete process.env.LIVETOON_SLIDE_DATA_HOME;
+    delete process.env.EDITABLE_SLIDES_DATA_HOME;
   } else {
-    process.env.LIVETOON_SLIDE_DATA_HOME = originalDataHome;
+    process.env.EDITABLE_SLIDES_DATA_HOME = originalDataHome;
   }
   await Promise.all(
     temporaryDirectories
@@ -43,7 +44,7 @@ function validManifest(id = "sales"): Record<string, unknown> {
     name: "営業提案テンプレート",
     version: "1.0.0",
     entry: "deck.mdx",
-    theme: "company",
+    theme: "default",
   };
 }
 
@@ -51,9 +52,7 @@ const templateDeck = `---
 schemaVersion: 1
 id: template
 title: "Template title"
-author: Livetoon
-company: Livetoon
-theme: company
+theme: default
 canvas: wide
 language: ja-JP
 strictEditable: true
@@ -67,7 +66,7 @@ slides:
 
 <Slide id="cover">
 
-# __LIVETOON_SLIDE_TITLE__
+# __EDITABLE_SLIDES_TITLE__
 
 URLから追加したテンプレート
 
@@ -143,7 +142,7 @@ async function withArchiveServer<T>(
 async function testHome(): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), "livetoon-template-test-"));
   temporaryDirectories.push(directory);
-  process.env.LIVETOON_SLIDE_DATA_HOME = path.join(directory, "slide-data");
+  process.env.EDITABLE_SLIDES_DATA_HOME = path.join(directory, "slide-data");
   return directory;
 }
 
@@ -155,7 +154,7 @@ describe("template manifest", () => {
         id: "sales",
         version: "1.0.0",
         entry: "deck.mdx",
-        theme: "company",
+        theme: "default",
       }),
     );
   });
@@ -173,36 +172,32 @@ describe("template manifest", () => {
 });
 
 describe("built-in templates", () => {
-  it("materializes and compiles tsuchikawa-shuron", async () => {
+  it("materializes and compiles default", async () => {
     const root = await testHome();
-    const target = path.join(root, "土川修論");
+    const target = path.join(root, "資料名");
 
-    const resolved = await resolveTemplate("tsuchikawa-shuron");
+    const resolved = await resolveTemplate("default");
     expect(resolved).toMatchObject({
-      registryName: "tsuchikawa-shuron",
+      registryName: "default",
       builtIn: true,
-      manifest: { theme: "tsuchikawa-shuron" },
+      manifest: { theme: "default" },
     });
 
-    await newCommand(
-      target,
-      { template: "tsuchikawa-shuron", title: "土川修士論文" },
-      { out: () => {}, error: () => {} },
-    );
+    await newCommand(target, { title: "資料名" }, { out: () => {}, error: () => {} });
     const source = await readFile(path.join(target, "deck.mdx"), "utf8");
-    expect(source).toContain('theme: "tsuchikawa-shuron"');
-    expect(source).toContain("# 土川修士論文");
+    expect(source).toContain('theme: "default"');
+    expect(source).toContain("# 資料名");
 
     const result = await compileDeckDirectory(target, {
-      theme: tsuchikawaShuronTheme,
+      theme: defaultTheme,
     });
-    expect(result.deck.slides).toHaveLength(4);
+    expect(result.deck.slides).toHaveLength(3);
     expect(result.diagnostics).toEqual([]);
 
-    await expect(removeTemplate("tsuchikawa-shuron")).rejects.toThrow("削除できません");
+    await expect(removeTemplate("default")).rejects.toThrow("削除できません");
     await expect(
       addTemplateFromUrl("https://example.com/template.zip", {
-        name: "tsuchikawa-shuron",
+        name: "default",
       }),
     ).rejects.toThrow("上書きできません");
   });
@@ -216,26 +211,26 @@ describe("template storage locations", () => {
         userHome: "/Users/tester",
         environment: {},
       }),
-    ).toBe("/Users/tester/Library/Application Support/Livetoon Slide");
+    ).toBe("/Users/tester/Library/Application Support/Editable Slides");
     expect(
       resolveTemplateDataHome({
         platform: "linux",
         userHome: "/home/tester",
         environment: {},
       }),
-    ).toBe("/home/tester/.local/share/livetoon-slide");
+    ).toBe("/home/tester/.local/share/editable-slides");
     expect(
       resolveTemplateDataHome({
         platform: "win32",
         userHome: "C:\\Users\\tester",
         environment: { LOCALAPPDATA: "C:\\Users\\tester\\AppData\\Local" },
       }),
-    ).toContain("Livetoon Slide");
+    ).toContain("Editable Slides");
     expect(
       resolveTemplateDataHome({
         platform: "darwin",
         userHome: "/Users/tester",
-        environment: { LIVETOON_SLIDE_DATA_HOME: "/tmp/slide-data" },
+        environment: { EDITABLE_SLIDES_DATA_HOME: "/tmp/slide-data" },
       }),
     ).toBe("/tmp/slide-data");
   });
@@ -259,7 +254,7 @@ describe("URL templates", () => {
 
     const metadata = await readFile(
       path.join(
-        process.env.LIVETOON_SLIDE_DATA_HOME ?? "",
+        process.env.EDITABLE_SLIDES_DATA_HOME ?? "",
         "templates",
         "sales",
         "metadata.json",
@@ -270,11 +265,7 @@ describe("URL templates", () => {
     expect(metadata).toContain("?<redacted>");
 
     const summaries = await listTemplates();
-    expect(summaries.map((item) => item.id)).toEqual([
-      "livetoon",
-      "tsuchikawa-shuron",
-      "sales",
-    ]);
+    expect(summaries.map((item) => item.id)).toEqual(["default", "sales"]);
 
     const target = path.join(root, "営業提案資料");
     await newCommand(
@@ -289,7 +280,7 @@ describe("URL templates", () => {
       '{"value":42}\n',
     );
     await expect(
-      compileDeckDirectory(target, { theme: companyTheme }),
+      compileDeckDirectory(target, { theme: defaultTheme }),
     ).resolves.toEqual(
       expect.objectContaining({
         deck: expect.objectContaining({ slides: expect.any(Array) }),
@@ -320,20 +311,34 @@ describe("URL templates", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("allows the official Livetoon ZIP only under an explicit alias", async () => {
-    await testHome();
-    const archive = await templateZip({ manifest: validManifest("livetoon") });
+  it("installs the optional Livetoon ZIP from an explicit URL", async () => {
+    const root = await testHome();
+    const archive = await createTemplateArchive();
 
-    await withArchiveServer(archive, async (url) => {
-      await expect(addTemplateFromUrl(url)).rejects.toThrow("--name");
-      await expect(
-        addTemplateFromUrl(url, { name: "livetoon-official" }),
-      ).resolves.toEqual(
+    await withArchiveServer(archive.data, async (url) => {
+      await expect(addTemplateFromUrl(url)).resolves.toEqual(
         expect.objectContaining({
-          summary: expect.objectContaining({ id: "livetoon-official" }),
+          summary: expect.objectContaining({ id: "livetoon" }),
         }),
       );
     });
+
+    const target = path.join(root, "会社資料");
+    await newCommand(
+      target,
+      { template: "livetoon", title: "会社資料" },
+      { out: () => {}, error: () => {} },
+    );
+    const source = await readFile(path.join(target, "deck.mdx"), "utf8");
+    expect(source).toContain('theme: "./theme.json"');
+    await expect(access(path.join(target, "theme.json"))).resolves.toBeUndefined();
+    const theme = await loadTheme("./theme.json", target);
+    expect(theme.ir.id).toBe("company");
+    await expect(compileDeckDirectory(target, { theme })).resolves.toEqual(
+      expect.objectContaining({
+        deck: expect.objectContaining({ slides: expect.any(Array) }),
+      }),
+    );
   });
 
   it("rejects non-HTTPS internet URLs before making a request", async () => {

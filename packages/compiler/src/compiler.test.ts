@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { companyTheme } from "@livetoon/slide-theme-company";
-import { defaultTheme } from "@livetoon/slide-theme-default";
+import { companyTheme } from "@editable-slides/slide-theme-company";
+import { defaultTheme } from "@editable-slides/slide-theme-default";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -202,7 +202,7 @@ describe("compileDeck", () => {
   });
 
   it("compileDeckDirectory prefers deck.mdx over deck.yaml", async () => {
-    const directory = await mkdtemp(path.join(tmpdir(), "livetoon-slide-"));
+    const directory = await mkdtemp(path.join(tmpdir(), "editable-slides-cli-"));
     await writeFile(
       path.join(directory, "deck.mdx"),
       [
@@ -245,7 +245,7 @@ describe("compileDeck", () => {
   });
 
   it("reports undeclared embedded asset references", async () => {
-    const directory = await mkdtemp(path.join(tmpdir(), "livetoon-slide-"));
+    const directory = await mkdtemp(path.join(tmpdir(), "editable-slides-cli-"));
     const deckPath = path.join(directory, "deck.mdx");
     await writeFile(
       deckPath,
@@ -326,7 +326,7 @@ describe("compileDeck", () => {
   });
 
   it("rejects unknown components instead of executing them", async () => {
-    const directory = await mkdtemp(path.join(tmpdir(), "livetoon-slide-"));
+    const directory = await mkdtemp(path.join(tmpdir(), "editable-slides-cli-"));
     await mkdir(path.join(directory, "slides"));
     await writeFile(
       path.join(directory, "deck.yaml"),
@@ -364,7 +364,7 @@ describe("compileDeck", () => {
   });
 
   it("rejects executable JSX expressions", async () => {
-    const directory = await mkdtemp(path.join(tmpdir(), "livetoon-slide-"));
+    const directory = await mkdtemp(path.join(tmpdir(), "editable-slides-cli-"));
     await mkdir(path.join(directory, "slides"));
     await writeFile(
       path.join(directory, "deck.yaml"),

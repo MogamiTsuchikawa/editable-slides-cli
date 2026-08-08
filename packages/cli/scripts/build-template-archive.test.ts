@@ -5,8 +5,10 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
+import JSZip from "jszip";
 import { afterEach, describe, expect, it } from "vitest";
 import { fromBufferPromise } from "yauzl";
+import { companyTheme } from "../../../themes/company/dist/index.js";
 
 import {
   createTemplateArchive,
@@ -32,9 +34,10 @@ describe("Livetoon template archive", () => {
     expect(first.data.equals(second.data)).toBe(true);
     expect(first.sha256).toBe(second.sha256);
     expect(first.sha256).toBe(
-      "d35dd351f8b0ceabf2fbe5f84af8dcde0bc38477d11da970dbc47f17fc788ef8",
+      "c23acead3caa58157639c53fb1f97db76cb404c9b7a3abeace8d7e44a9ef8bc2",
     );
     expect(first.fileName).toBe("livetoon-template-1.0.0.zip");
+    expect(first.manifest.theme).toBe("./theme.json");
 
     const zip = await fromBufferPromise(first.data, {
       autoClose: false,
@@ -64,11 +67,19 @@ describe("Livetoon template archive", () => {
       "livetoon-template/deck.mdx",
       "livetoon-template/layout.overrides.json",
       "livetoon-template/template.json",
+      "livetoon-template/theme.json",
     ]);
     expect(entries.every((entry) => entry.mode === 0o100644)).toBe(true);
     expect(
       entries.every((entry) => entry.compressedSize === entry.uncompressedSize),
     ).toBe(true);
+
+    const parsedZip = await JSZip.loadAsync(first.data);
+    const theme = parsedZip.file("livetoon-template/theme.json");
+    if (!theme) throw new Error("theme.json was not found in the archive");
+    expect(JSON.parse(await theme.async("text"))).toEqual(
+      JSON.parse(JSON.stringify(companyTheme)),
+    );
   });
 
   it("has the same SHA-256 in different time zones", async () => {
@@ -92,7 +103,7 @@ describe("Livetoon template archive", () => {
     );
 
     expect(new Set(hashes)).toEqual(
-      new Set(["d35dd351f8b0ceabf2fbe5f84af8dcde0bc38477d11da970dbc47f17fc788ef8"]),
+      new Set(["c23acead3caa58157639c53fb1f97db76cb404c9b7a3abeace8d7e44a9ef8bc2"]),
     );
   });
 
@@ -109,5 +120,5 @@ describe("Livetoon template archive", () => {
     expect(await readFile(result.checksumPath, "utf8")).toBe(
       `${result.sha256}  ${result.fileName}\n`,
     );
-  });
+  }, 15_000);
 });

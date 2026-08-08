@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { DeckIR, ElementBase, TextStyleIR } from "@livetoon/slide-deck-ir";
+import type { DeckIR, ElementBase, TextStyleIR } from "@editable-slides/slide-deck-ir";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import { renderPptx } from "../../renderer-pptx/src/index.js";

@@ -1,4 +1,8 @@
-import type { Diagnostic, ParagraphIR, TextRunIR } from "@livetoon/slide-deck-ir";
+import type {
+  Diagnostic,
+  ParagraphIR,
+  TextRunIR,
+} from "@editable-slides/slide-deck-ir";
 import { toString as mdastToString } from "mdast-util-to-string";
 import remarkParse from "remark-parse";
 import { unified } from "unified";

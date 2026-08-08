@@ -9,7 +9,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { Diagnostic } from "@livetoon/slide-deck-ir";
+import type { Diagnostic } from "@editable-slides/slide-deck-ir";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -66,14 +66,14 @@ describe("resolveRepositoryRoot", () => {
 });
 
 describe("built-in themes", () => {
-  it("loads tsuchikawa-shuron without enabling executable custom themes", async () => {
-    const first = await loadTheme("tsuchikawa-shuron", process.cwd());
+  it("loads the default theme without enabling executable custom themes", async () => {
+    const first = await loadTheme("default", process.cwd());
     first.ir.name = "mutated";
 
-    const second = await loadTheme("tsuchikawa-shuron", process.cwd());
+    const second = await loadTheme("default", process.cwd());
 
-    expect(second.ir.id).toBe("tsuchikawa-shuron");
-    expect(second.ir.name).toBe("Tsuchikawa Shuron");
+    expect(second.ir.id).toBe("default");
+    expect(second.ir.name).toBe("Default");
   });
 });
 

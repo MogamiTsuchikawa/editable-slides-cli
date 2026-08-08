@@ -47,6 +47,6 @@ jobs:
       - run: npm ci
       - run: npx playwright install chromium
       - run: npm run build:runtime
-      - run: npm run test:package -w livetoon-slide
+      - run: npm run test:package -w editable-slides-cli
         env:
           SLIDE_PACKAGE_BROWSER: "1"

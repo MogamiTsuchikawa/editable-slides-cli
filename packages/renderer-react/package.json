@@ -1,5 +1,5 @@
 {
-  "name": "@livetoon/slide-renderer-react",
+  "name": "@editable-slides/slide-renderer-react",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -22,7 +22,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@livetoon/slide-deck-ir": "*"
+    "@editable-slides/slide-deck-ir": "*"
   },
   "peerDependencies": {
     "react": "^19.0.0",

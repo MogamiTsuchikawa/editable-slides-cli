@@ -1,5 +1,5 @@
-import type { DeckIR, ElementIR, SlideIR } from "@livetoon/slide-deck-ir";
-import { ResponsiveSlide } from "@livetoon/slide-renderer-react";
+import type { DeckIR, ElementIR, SlideIR } from "@editable-slides/slide-deck-ir";
+import { ResponsiveSlide } from "@editable-slides/slide-renderer-react";
 import {
   type PointerEvent as ReactPointerEvent,
   useCallback,

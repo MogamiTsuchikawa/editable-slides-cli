@@ -1,23 +1,23 @@
 {
-  "name": "livetoon-slide",
+  "name": "editable-slides-cli",
   "version": "0.1.0",
-  "description": "CLI for creating, previewing, validating, and exporting Livetoon Slide decks",
+  "description": "CLI for creating, previewing, validating, and exporting editable slide decks",
   "keywords": [
     "slides",
     "presentation",
     "powerpoint",
     "pptx",
     "pdf",
-    "livetoon"
+    "slide-deck"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/MogamiTsuchikawa/livetoon-slide#readme",
+  "homepage": "https://github.com/MogamiTsuchikawa/editable-slides-cli#readme",
   "bugs": {
-    "url": "https://github.com/MogamiTsuchikawa/livetoon-slide/issues"
+    "url": "https://github.com/MogamiTsuchikawa/editable-slides-cli/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MogamiTsuchikawa/livetoon-slide.git",
+    "url": "git+https://github.com/MogamiTsuchikawa/editable-slides-cli.git",
     "directory": "packages/cli"
   },
   "type": "module",
@@ -48,14 +48,12 @@
     "playwright": "1.62.0"
   },
   "devDependencies": {
-    "@livetoon/slide-compiler": "*",
-    "@livetoon/slide-deck-ir": "*",
-    "@livetoon/slide-exporter-pdf": "*",
-    "@livetoon/slide-qa-pptx": "*",
-    "@livetoon/slide-renderer-pptx": "*",
-    "@livetoon/slide-theme-company": "*",
-    "@livetoon/slide-theme-default": "*",
-    "@livetoon/slide-theme-tsuchikawa-shuron": "*",
+    "@editable-slides/slide-compiler": "*",
+    "@editable-slides/slide-deck-ir": "*",
+    "@editable-slides/slide-exporter-pdf": "*",
+    "@editable-slides/slide-qa-pptx": "*",
+    "@editable-slides/slide-renderer-pptx": "*",
+    "@editable-slides/slide-theme-default": "*",
     "@types/node": "^24.10.0",
     "@types/yauzl": "3.4.0",
     "chokidar": "^4.0.3",

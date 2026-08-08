@@ -47,7 +47,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install chromium
       - run: npm run build:runtime
-      - run: npm run test:package -w livetoon-slide
+      - run: npm run test:package -w editable-slides-cli
         env:
           SLIDE_PACKAGE_BROWSER: "1"
 
@@ -74,15 +74,13 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
       - run: npm run build:runtime
-      - run: npm run build:template
       - run: mkdir -p artifacts
-      - run: npm pack --workspace=livetoon-slide --ignore-scripts --pack-destination artifacts
-      - run: shasum -a 256 artifacts/*.tgz artifacts/templates/*.zip > artifacts/SHA256SUMS
+      - run: npm pack --workspace=editable-slides-cli --ignore-scripts --pack-destination artifacts
+      - run: shasum -a 256 artifacts/*.tgz > artifacts/SHA256SUMS
       - uses: actions/attest@v4
         with:
           subject-path: |
             artifacts/*.tgz
-            artifacts/templates/*.zip
             artifacts/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
@@ -112,7 +110,7 @@ jobs:
       - run: npm run check:release
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-      - run: npm publish --workspace=livetoon-slide
+      - run: npm publish --workspace=editable-slides-cli
 
   github-release:
     if: github.event_name == 'push' && github.ref_type == 'tag'
@@ -127,6 +125,6 @@ jobs:
         with:
           name: release-candidate
           path: artifacts
-      - run: gh release create "${GITHUB_REF_NAME}" artifacts/*.tgz artifacts/SHA256SUMS artifacts/templates/* --generate-notes --verify-tag
+      - run: gh release create "${GITHUB_REF_NAME}" artifacts/*.tgz artifacts/SHA256SUMS --generate-notes --verify-tag
         env:
           GH_TOKEN: ${{ github.token }}

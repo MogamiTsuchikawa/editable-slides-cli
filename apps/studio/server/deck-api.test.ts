@@ -121,7 +121,7 @@ describe("rewriteAssetSources", () => {
     const repositoryRoot = await mkdtemp(joinTmp("livetoon-asset-api-"));
     temporaryDirectories.push(repositoryRoot);
     const deckDirectory = path.join(repositoryRoot, "decks", "media");
-    const irPath = path.join(deckDirectory, ".livetoon", "deck.ir.json");
+    const irPath = path.join(deckDirectory, ".editable-slides", "deck.ir.json");
     const assetPath = path.join(deckDirectory, "assets", "sample.mp4");
     const captionPath = path.join(deckDirectory, "assets", "sample.ja.vtt");
     const unreferencedAssetPath = path.join(

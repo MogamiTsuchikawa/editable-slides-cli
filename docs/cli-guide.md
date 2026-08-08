@@ -5,7 +5,7 @@
 公開版をnpmから導入する。
 
 ```bash
-npm install --global livetoon-slide
+npm install --global editable-slides-cli
 slide setup
 slide doctor
 ```
@@ -42,14 +42,12 @@ Ubuntuの収録コマンドは[Ubuntu公式package一覧](https://packages.ubunt
 ## 新しい資料を作る
 
 ```bash
-slide new -t livetoon "資料名"
-slide new -t tsuchikawa-shuron "修士論文発表"
+slide new "資料名"
 slide dev "資料名" --open
 ```
 
-`livetoon`はCLIに同梱されたテンプレートで、Livetoonの`company`テーマを使う。
-`tsuchikawa-shuron`も同梱され、青緑の帯と白地を使う修士論文発表向けの
-テーマを適用する。
+組み込みテンプレートは中立な`default`だけである。`slide new -t default "資料名"`と
+明示することもできる。
 日本語の資料名はそのままフォルダ名と表示名になる。資料の処理に必要な英数字の
 内部IDは自動で作られるため、利用者が決める必要はない。
 
@@ -84,7 +82,7 @@ slide template add https://example.com/templates/sales.zip \
 ```
 
 登録したテンプレートはOS標準のデータ保存先に保管される。自動処理や一時環境で
-保存先を固定したい場合は、`LIVETOON_SLIDE_DATA_HOME`を指定できる。
+保存先を固定したい場合は、`EDITABLE_SLIDES_DATA_HOME`を指定できる。
 
 ### ZIPの構成
 
@@ -94,14 +92,15 @@ ZIPのルート、またはZIP内の単一フォルダに、次のファイル�
 sales-template/
 ├── template.json            必須
 ├── deck.mdx                 必須
+├── theme.json               独自デザインを使う場合
 ├── layout.overrides.json    任意
 ├── assets/                  任意
 ├── data/                    任意
 └── README.md                任意
 ```
 
-`template.json`は次の形式にする。`entry`は`deck.mdx`、`theme`は同梱済みの
-`company`、`default`、`tsuchikawa-shuron`のいずれかを指定する。
+`template.json`は次の形式にする。`entry`は`deck.mdx`、標準テンプレートと
+同じ構成にする場合は`theme`へ`default`を指定する。
 
 ```json
 {
@@ -110,19 +109,23 @@ sales-template/
   "name": "営業提案テンプレート",
   "version": "1.0.0",
   "entry": "deck.mdx",
-  "theme": "company"
+  "theme": "default"
 }
 ```
+
+独自デザインを配布する場合は、実行コードではない`theme.json`をZIPへ含め、
+`theme`を`./theme.json`にする。CLIは登録時にテーマ定義とデッキを検証する。
+JavaScriptのテーマはURLテンプレートに含められない。
 
 `deck.mdx`先頭の`id`、`title`、`theme`は、`slide new`が作成時に設定する。
 表紙など本文にも資料名を入れる場合は、次の固定文字を置いておく。
 
 ```mdx
-# __LIVETOON_SLIDE_TITLE__
+# __EDITABLE_SLIDES_TITLE__
 ```
 
 作成時に、この固定文字が安全に処理された資料名へ置き換わる。必要な場合は
-`__LIVETOON_SLIDE_ID__`と`__LIVETOON_SLIDE_THEME__`も本文で使用できる。
+`__EDITABLE_SLIDES_ID__`と`__EDITABLE_SLIDES_THEME__`も本文で使用できる。
 テンプレートの`assets/`と`data/`も新しい資料へコピーされる。
 
 通常はHTTPS URLだけを使う。`localhost`、`127.0.0.1`など手元の開発サーバーは
@@ -142,8 +145,10 @@ slide template add http://templates.example.local/sales.zip \
 slide template remove sales
 ```
 
-同梱の`livetoon`と同じ公式ZIPをURL経由でも確認する場合は、組み込み版を
-上書きしないよう別名を指定する。
+Livetoonなどの会社用テンプレートも、URLから明示的に登録する。テンプレート原本は
+リポジトリ直下の`templates/`に置くが、
+公開npm packageには同梱しない。配布URLとSHA-256はS3などの管理された配布元から
+受け取る。
 
 ```bash
 slide template add https://example.com/livetoon-template-1.0.0.zip \
@@ -157,7 +162,7 @@ slide template add https://example.com/livetoon-template-1.0.0.zip \
 |---|---|
 | `slide new -t <template> <folder>` | 指定したテンプレートから新しい資料を作る |
 | `slide template add <https-url>` | URLのZIPテンプレートを登録する |
-| `slide template list` | 同梱・登録済みのテンプレートを一覧表示する |
+| `slide template list` | 組み込みの`default`と登録済みテンプレートを一覧表示する |
 | `slide template remove <id>` | 登録済みテンプレートを削除する |
 | `slide migrate <folder>` | 旧形式の資料を、Studioでページ操作できる単一ファイル形式へ移行する |
 | `slide layout bake <folder>` | Studioの位置・サイズ調整を元の資料へ反映する |
@@ -185,7 +190,7 @@ slide template add https://example.com/livetoon-template-1.0.0.zip \
 | テンプレートを登録できない | URLがHTTPSか、ZIPに`template.json`と`deck.mdx`があるかを確認する |
 | SHA-256が一致しない | 登録を中止し、配布元のURLとSHA-256を確認する。`--force`で回避しない |
 | 同じテンプレート名がある | 内容を確認し、更新する場合だけ`--force`を付ける |
-| 独自テーマが拒否される | 同梱テーマを使うか、信頼できるテーマだけ`LIVETOON_ALLOW_CUSTOM_THEME=1`を明示して実行する |
+| 独自テーマが拒否される | 同梱テーマを使うか、信頼できるテーマだけ`EDITABLE_SLIDES_ALLOW_CUSTOM_THEME=1`を明示して実行する |
 | 大きな動画を追加できない | 動画を圧縮する。100MiBを超える素材は通常のGit管理へ直接追加しない |
 
 旧形式を移行するとき、元の`deck.yaml`とページファイルは削除・変更しない。
@@ -216,16 +221,17 @@ ID変更は、接続線の参照と位置調整も同時に更新する。ペー
 ```bash
 npm run build:template
 npm run test:package
-npm pack --workspace=livetoon-slide
+npm pack --workspace=editable-slides-cli
 ```
 
-`build:template`は公式LivetoonテンプレートのZIPとSHA-256を
-`artifacts/templates/`へ生成する。ZIPは原本と重複するためGit管理せず、
-GitHub Actionsの配布物として扱う。
+`build:template`はLivetoonテンプレートのZIPとSHA-256を
+`artifacts/templates/`へ生成する。ZIPはnpm packageやGitHub Releaseへ添付せず、
+必要な場合だけS3などの管理されたURLへ配置する。
 
 `test:package`は一時フォルダにtarballを導入し、`new`、厳格な`lint`、
 PPTX出力、同梱Studioの起動を確認する。`SLIDE_PACKAGE_PDF=1`を付けた場合は
 PDF出力も確認する。
 
-初回公開前は`npm pack --workspace=livetoon-slide`で作った`.tgz`を使って確認する。
-ライセンスはMITである。公開は`v<version>`タグのrelease workflowからだけ行う。
+初回公開前は`npm pack --workspace=editable-slides-cli`で作った`.tgz`を使って確認する。
+ライセンスはMITである。初回だけ手動publishし、その後は`v<version>`タグの
+release workflowから公開する。

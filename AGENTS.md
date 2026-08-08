@@ -1,4 +1,4 @@
-# Livetoon Slide agent entrypoint
+# Editable Slides agent entrypoint
 
 このリポジトリで作業を始める前に、ルートの`AI_PLAYBOOK.md`を最後まで読むこと。
 スライドを制作・修正するときは、使用するテーマの`authoring`設定も読むこと。

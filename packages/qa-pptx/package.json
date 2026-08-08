@@ -1,5 +1,5 @@
 {
-  "name": "@livetoon/slide-qa-pptx",
+  "name": "@editable-slides/slide-qa-pptx",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -24,8 +24,8 @@
     "jszip": "3.10.1"
   },
   "devDependencies": {
-    "@livetoon/slide-deck-ir": "*",
-    "@livetoon/slide-renderer-pptx": "*",
+    "@editable-slides/slide-deck-ir": "*",
+    "@editable-slides/slide-renderer-pptx": "*",
     "@types/node": "^24.10.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { DeckIR, ElementIR, SlideIR } from "@livetoon/slide-deck-ir";
+import type { DeckIR, ElementIR, SlideIR } from "@editable-slides/slide-deck-ir";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {

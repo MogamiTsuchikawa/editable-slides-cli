@@ -1,5 +1,5 @@
 {
-  "name": "@livetoon/slide-studio",
+  "name": "@editable-slides/slide-studio",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,15 +14,15 @@
   "dependencies": {
     "@fontsource-variable/noto-sans-jp": "^5.3.0",
     "@fontsource-variable/noto-sans-mono": "^5.3.0",
-    "@livetoon/slide-deck-ir": "*",
-    "@livetoon/slide-renderer-react": "*",
+    "@editable-slides/slide-deck-ir": "*",
+    "@editable-slides/slide-renderer-react": "*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-moveable": "^0.56.0",
     "react-selecto": "^1.26.0"
   },
   "devDependencies": {
-    "@livetoon/slide-theme-default": "*",
+    "@editable-slides/slide-theme-default": "*",
     "@types/node": "^24.0.0",
     "@types/pngjs": "^6.0.5",
     "@types/react": "^19.0.0",

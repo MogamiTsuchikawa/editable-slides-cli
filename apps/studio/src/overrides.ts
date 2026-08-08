@@ -1,4 +1,4 @@
-import type { ElementIR, SlideIR } from "@livetoon/slide-deck-ir";
+import type { ElementIR, SlideIR } from "@editable-slides/slide-deck-ir";
 
 export const OVERRIDE_SCHEMA_VERSION = 1 as const;
 

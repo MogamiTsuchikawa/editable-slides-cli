@@ -15,7 +15,7 @@ import {
   tableDimensionsMatch,
   validateChartContract,
   validateTableGrid,
-} from "@livetoon/slide-deck-ir";
+} from "@editable-slides/slide-deck-ir";
 
 const SAFE_ID = /^[a-z0-9][a-z0-9_-]*$/;
 export const MAX_STUDIO_DECK_SOURCE_BYTES = 2 * 1024 * 1024;

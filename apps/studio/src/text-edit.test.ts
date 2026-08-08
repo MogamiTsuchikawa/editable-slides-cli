@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ElementIR, TextElementIR } from "@livetoon/slide-deck-ir";
+import type { ElementIR, TextElementIR } from "@editable-slides/slide-deck-ir";
 import { describe, expect, it } from "vitest";
 import {
   isTextEditorTarget,

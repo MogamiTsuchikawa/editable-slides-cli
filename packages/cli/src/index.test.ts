@@ -7,14 +7,14 @@ import { main } from "./index.js";
 import { cliVersion } from "./version.js";
 
 const temporaryDirectories: string[] = [];
-const originalDataHome = process.env.LIVETOON_SLIDE_DATA_HOME;
+const originalDataHome = process.env.EDITABLE_SLIDES_DATA_HOME;
 
 afterEach(async () => {
   vi.restoreAllMocks();
   if (originalDataHome === undefined) {
-    delete process.env.LIVETOON_SLIDE_DATA_HOME;
+    delete process.env.EDITABLE_SLIDES_DATA_HOME;
   } else {
-    process.env.LIVETOON_SLIDE_DATA_HOME = originalDataHome;
+    process.env.EDITABLE_SLIDES_DATA_HOME = originalDataHome;
   }
   await Promise.all(
     temporaryDirectories
@@ -47,46 +47,31 @@ describe("CLI arguments", () => {
     );
   });
 
-  it("accepts -t before a Japanese deck name", async () => {
-    const parent = await mkdtemp(path.join(tmpdir(), "livetoon-slide-cli-new-"));
+  it("uses the default template for a Japanese deck name", async () => {
+    const parent = await mkdtemp(path.join(tmpdir(), "editable-slides-cli-cli-new-"));
     temporaryDirectories.push(parent);
     const target = path.join(parent, "資料名");
     vi.spyOn(console, "log").mockImplementation(() => {});
 
-    await main(["new", "-t", "livetoon", target]);
+    await main(["new", target]);
 
     const source = await readFile(path.join(target, "deck.mdx"), "utf8");
     expect(source).toContain('title: "資料名"');
     expect(source).toMatch(/id: deck-[0-9a-f]{8}/);
-    expect(source).toContain('theme: "company"');
-  });
-
-  it("creates a deck from the tsuchikawa-shuron built-in template", async () => {
-    const parent = await mkdtemp(path.join(tmpdir(), "tsuchikawa-shuron-cli-new-"));
-    temporaryDirectories.push(parent);
-    const target = path.join(parent, "土川修士論文");
-    vi.spyOn(console, "log").mockImplementation(() => {});
-
-    await main(["new", "-t", "tsuchikawa-shuron", target]);
-
-    const source = await readFile(path.join(target, "deck.mdx"), "utf8");
-    expect(source).toContain('title: "土川修士論文"');
-    expect(source).toContain('theme: "tsuchikawa-shuron"');
-    expect(source).toContain("# 土川修士論文");
+    expect(source).toContain('theme: "default"');
   });
 
   it("lists the built-in template through the template command", async () => {
-    const parent = await mkdtemp(path.join(tmpdir(), "livetoon-slide-cli-template-"));
+    const parent = await mkdtemp(
+      path.join(tmpdir(), "editable-slides-cli-cli-template-"),
+    );
     temporaryDirectories.push(parent);
-    process.env.LIVETOON_SLIDE_DATA_HOME = path.join(parent, "slide-data");
+    process.env.EDITABLE_SLIDES_DATA_HOME = path.join(parent, "slide-data");
     const output = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await main(["template", "list"]);
 
-    expect(output).toHaveBeenCalledWith(expect.stringContaining("livetoon\tbuilt-in"));
-    expect(output).toHaveBeenCalledWith(
-      expect.stringContaining("tsuchikawa-shuron\tbuilt-in"),
-    );
+    expect(output).toHaveBeenCalledWith(expect.stringContaining("default\tbuilt-in"));
   });
 
   it("rejects arguments passed to doctor", async () => {

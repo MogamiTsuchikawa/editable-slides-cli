@@ -1,11 +1,10 @@
-import { companyTheme } from "@livetoon/slide-theme-company";
-import { defaultTheme, type ThemeDefinition } from "@livetoon/slide-theme-default";
-import { tsuchikawaShuronTheme } from "@livetoon/slide-theme-tsuchikawa-shuron";
+import {
+  defaultTheme,
+  type ThemeDefinition,
+} from "@editable-slides/slide-theme-default";
 
 const themes = {
-  company: companyTheme,
   default: defaultTheme,
-  "tsuchikawa-shuron": tsuchikawaShuronTheme,
 } as const satisfies Record<string, ThemeDefinition>;
 
 export type BuiltInThemeId = keyof typeof themes;

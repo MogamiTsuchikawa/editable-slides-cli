@@ -20,20 +20,14 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build:runtime
-      - run: npm run build:template
-      - run: npm run test:package -w livetoon-slide
+      - run: npm run test:package -w editable-slides-cli
         env:
           SLIDE_PACKAGE_BROWSER: "1"
       - run: mkdir -p artifacts
-      - run: npm publish --workspace=livetoon-slide --dry-run --ignore-scripts
-      - run: npm pack --workspace=livetoon-slide --ignore-scripts --pack-destination artifacts
+      - run: npm publish --workspace=editable-slides-cli --dry-run --ignore-scripts
+      - run: npm pack --workspace=editable-slides-cli --ignore-scripts --pack-destination artifacts
       - uses: actions/upload-artifact@v4
         with:
-          name: livetoon-slide-cli
+          name: editable-slides-cli
           path: artifacts/*.tgz
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        with:
-          name: livetoon-slide-templates
-          path: artifacts/templates/*
           if-no-files-found: error

@@ -4,10 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import JSZip from "jszip";
+import { companyTheme } from "../../../themes/company/dist/index.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryRoot = path.resolve(packageRoot, "../..");
-const defaultSourceDirectory = path.join(packageRoot, "templates", "livetoon");
+const defaultSourceDirectory = path.join(repositoryRoot, "templates", "livetoon");
 const defaultOutputDirectory = path.join(repositoryRoot, "artifacts", "templates");
 const archiveDate = new Date("2000-01-01T00:00:00.000Z");
 const archiveWrapper = "livetoon-template";
@@ -52,7 +53,7 @@ function validateManifest(manifest) {
     typeof manifest.version !== "string" ||
     !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(manifest.version) ||
     manifest.entry !== "deck.mdx" ||
-    manifest.theme !== "company"
+    manifest.theme !== "./theme.json"
   ) {
     throw new Error("The Livetoon template manifest is invalid.");
   }
@@ -88,6 +89,11 @@ export async function createTemplateArchive(options = {}) {
       },
     );
   }
+  zip.file(`${archiveWrapper}/theme.json`, JSON.stringify(companyTheme), {
+    createFolders: false,
+    date: archiveDate,
+    unixPermissions: 0o100644,
+  });
   const data = await zip.generateAsync({
     type: "nodebuffer",
     compression: "STORE",

@@ -4,8 +4,8 @@ import type {
   FrameIR,
   SlideIR,
   TextElementIR,
-} from "@livetoon/slide-deck-ir";
-import type { ThemeDefinition } from "@livetoon/slide-theme-default";
+} from "@editable-slides/slide-deck-ir";
+import type { ThemeDefinition } from "@editable-slides/slide-theme-default";
 
 export interface AccessibilityIssue {
   severity: "error" | "warning" | "info";

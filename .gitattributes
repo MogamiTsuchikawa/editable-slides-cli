@@ -1,2 +1,6 @@
-packages/cli/templates/livetoon/*.json text eol=lf
-packages/cli/templates/livetoon/*.mdx text eol=lf
+packages/cli/templates/default/*.json text eol=lf
+packages/cli/templates/default/*.mdx text eol=lf
+templates/livetoon/*.json text eol=lf
+templates/livetoon/*.mdx text eol=lf
+templates/tsuchikawa-shuron/*.json text eol=lf
+templates/tsuchikawa-shuron/*.mdx text eol=lf

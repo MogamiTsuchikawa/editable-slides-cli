@@ -5,8 +5,11 @@ import {
   DeckIRSchema,
   type Diagnostic,
   WIDE_CANVAS,
-} from "@livetoon/slide-deck-ir";
-import { defaultTheme, type ThemeDefinition } from "@livetoon/slide-theme-default";
+} from "@editable-slides/slide-deck-ir";
+import {
+  defaultTheme,
+  type ThemeDefinition,
+} from "@editable-slides/slide-theme-default";
 
 import { readDeckConfig, readLayoutOverrides, resolveDeckLocalPath } from "./config.js";
 import { parseDeckMdx } from "./deck-mdx.js";
@@ -40,7 +43,13 @@ function validateThemeSelection(
   configPath: string,
 ): Diagnostic[] {
   if (suppliedTheme) {
-    if (configuredTheme !== suppliedTheme.ir.id && configuredTheme !== "default") {
+    const declarativeTheme =
+      configuredTheme === "./theme.json" || configuredTheme === "theme.json";
+    if (
+      configuredTheme !== suppliedTheme.ir.id &&
+      configuredTheme !== "default" &&
+      !declarativeTheme
+    ) {
       return [
         createDiagnostic({
           severity: "error",

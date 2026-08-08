@@ -3,7 +3,7 @@ import {
   type ElementIR,
   type SlideIR,
   scaleTableDimensions,
-} from "@livetoon/slide-deck-ir";
+} from "@editable-slides/slide-deck-ir";
 
 import { createDiagnostic } from "./diagnostics.js";
 import type { ElementLayoutOverride, LayoutOverrides } from "./types.js";

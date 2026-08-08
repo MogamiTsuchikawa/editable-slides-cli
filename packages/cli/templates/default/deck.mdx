@@ -1,0 +1,69 @@
+---
+schemaVersion: 1
+id: template
+title: "資料タイトル"
+theme: "default"
+canvas: wide
+language: ja-JP
+strictEditable: true
+slides:
+  - id: cover
+    layout: cover
+    notes: |
+      資料の目的と対象者を簡潔に説明します。
+    sources: []
+  - id: summary
+    layout: title-body
+    notes: |
+      最初に結論を伝え、重要なポイントを順に説明します。
+    sources: []
+  - id: comparison
+    layout: title-two-column
+    notes: |
+      左右を同じ観点で比較し、違いと判断理由を説明します。
+    sources: []
+---
+
+<Slide id="cover">
+
+# __EDITABLE_SLIDES_TITLE__
+
+要点が伝わり、PowerPointで編集できる資料
+
+</Slide>
+
+<Slide id="summary">
+
+# この資料で伝えること
+
+- 結論を先に示す
+- 根拠を分かりやすく整理する
+- 次に取る行動を明確にする
+
+</Slide>
+
+<Slide id="comparison">
+
+# 選択肢を同じ観点で比較する
+
+<Slot name="left">
+
+## 選択肢A
+
+- 主な特徴
+- メリット
+- 注意点
+
+</Slot>
+
+<Slot name="right">
+
+## 選択肢B
+
+- 主な特徴
+- メリット
+- 注意点
+
+</Slot>
+
+</Slide>

@@ -7,7 +7,7 @@ import {
   parseDeckIR,
   type SourceLocation,
   type TextElementIR,
-} from "@livetoon/slide-deck-ir";
+} from "@editable-slides/slide-deck-ir";
 
 export interface TextSourceUpdate {
   slideId: string;

@@ -17,9 +17,10 @@ import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 
-import { compileDeckDirectory } from "@livetoon/slide-compiler";
+import { compileDeckDirectory } from "@editable-slides/slide-compiler";
 import { parseDocument } from "yaml";
 import { type Entry, fromBufferPromise } from "yauzl";
+import { loadDeclarativeTheme } from "./declarative-theme.js";
 import {
   BUILT_IN_THEME_IDS,
   type BuiltInThemeId,
@@ -27,8 +28,8 @@ import {
   resolveBuiltInTheme,
 } from "./themes.js";
 
-const DEFAULT_BUILT_IN_TEMPLATE = "livetoon";
-const BUILT_IN_TEMPLATES = ["livetoon", "tsuchikawa-shuron"] as const;
+const DEFAULT_BUILT_IN_TEMPLATE = "default";
+const BUILT_IN_TEMPLATES = ["default"] as const;
 const TEMPLATE_SCHEMA_VERSION = 1;
 const MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024;
 const MAX_EXTRACTED_BYTES = 100 * 1024 * 1024;
@@ -37,6 +38,7 @@ const MAX_MANIFEST_BYTES = 64 * 1024;
 const MAX_ARCHIVE_ENTRIES = 1_000;
 const MAX_REDIRECTS = 3;
 const DOWNLOAD_TIMEOUT_MS = 60_000;
+const DECLARATIVE_THEME_REFERENCE = "./theme.json" as const;
 const TEMPLATE_NAME_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
 const SEMVER_PATTERN =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
@@ -48,6 +50,7 @@ const ALLOWED_ROOT_FILES = new Set([
   "NOTICE",
   "README.md",
   "template.json",
+  "theme.json",
 ]);
 const ALLOWED_ASSET_EXTENSIONS = new Set([
   ".gif",
@@ -85,7 +88,7 @@ export interface TemplateManifest {
   name: string;
   version: string;
   entry: "deck.mdx";
-  theme: BuiltInThemeId;
+  theme: BuiltInThemeId | typeof DECLARATIVE_THEME_REFERENCE;
   description?: string;
   license?: string;
 }
@@ -144,10 +147,13 @@ function builtInTemplateDirectory(name: string): string {
 }
 
 function isTemplateTheme(value: string): value is TemplateManifest["theme"] {
-  return isBuiltInThemeId(value);
+  return isBuiltInThemeId(value) || value === DECLARATIVE_THEME_REFERENCE;
 }
 
-function templateTheme(manifest: TemplateManifest) {
+async function templateTheme(directory: string, manifest: TemplateManifest) {
+  if (manifest.theme === DECLARATIVE_THEME_REFERENCE) {
+    return loadDeclarativeTheme(path.join(directory, "theme.json"));
+  }
   const theme = resolveBuiltInTheme(manifest.theme);
   if (!theme) {
     throw new Error(`組み込みテーマ${manifest.theme}を読み取れません。`);
@@ -165,22 +171,22 @@ export function resolveTemplateDataHome(
   const environment = options.environment ?? process.env;
   const platform = options.platform ?? process.platform;
   const userHome = options.userHome ?? homedir();
-  const explicit = environment.LIVETOON_SLIDE_DATA_HOME?.trim();
+  const explicit = environment.EDITABLE_SLIDES_DATA_HOME?.trim();
   if (explicit) return path.resolve(explicit);
   if (platform === "darwin") {
-    return path.join(userHome, "Library", "Application Support", "Livetoon Slide");
+    return path.join(userHome, "Library", "Application Support", "Editable Slides");
   }
   if (platform === "win32") {
     return path.join(
       environment.LOCALAPPDATA ??
         environment.APPDATA ??
         path.join(userHome, "AppData", "Local"),
-      "Livetoon Slide",
+      "Editable Slides",
     );
   }
   return path.join(
     environment.XDG_DATA_HOME ?? path.join(userHome, ".local", "share"),
-    "livetoon-slide",
+    "editable-slides",
   );
 }
 
@@ -272,7 +278,7 @@ export function parseTemplateManifest(contents: string): TemplateManifest {
   const theme = requiredManifestString(value, "theme", 100);
   if (!isTemplateTheme(theme)) {
     throw new Error(
-      `URLテンプレートのthemeは${BUILT_IN_THEME_IDS.join("、")}に限定しています。`,
+      `URLテンプレートのthemeは${BUILT_IN_THEME_IDS.join("、")}または${DECLARATIVE_THEME_REFERENCE}に限定しています。`,
     );
   }
   const description =
@@ -363,7 +369,7 @@ async function downloadArchive(
         headers: {
           accept: "application/zip, application/octet-stream",
           "accept-encoding": "identity",
-          "user-agent": "Livetoon-Slide-CLI",
+          "user-agent": "Editable-Slides-CLI",
         },
       });
     } catch {
@@ -726,12 +732,11 @@ async function validateTemplateDeck(
 ): Promise<void> {
   try {
     await compileDeckDirectory(directory, {
-      theme: templateTheme(manifest),
+      theme: await templateTheme(directory, manifest),
     });
-  } catch {
-    throw new Error(
-      "テンプレートのdeck.mdxを安全なLivetoon Slide資料として読み取れません。",
-    );
+  } catch (error) {
+    const reason = error instanceof Error ? `: ${error.message}` : "";
+    throw new Error(`テンプレートのdeck.mdxを安全な資料として読み取れません${reason}`);
   }
 }
 
@@ -1009,9 +1014,9 @@ function customizeDeckSource(
   document.set("theme", values.theme);
   const body = source
     .slice(match[0].length)
-    .replaceAll("__LIVETOON_SLIDE_ID__", values.id)
-    .replaceAll("__LIVETOON_SLIDE_TITLE__", mdxPlainText(values.title))
-    .replaceAll("__LIVETOON_SLIDE_THEME__", mdxPlainText(values.theme));
+    .replaceAll("__EDITABLE_SLIDES_ID__", values.id)
+    .replaceAll("__EDITABLE_SLIDES_TITLE__", mdxPlainText(values.title))
+    .replaceAll("__EDITABLE_SLIDES_THEME__", mdxPlainText(values.theme));
   return `---\n${document.toString({ lineWidth: 0 }).trimEnd()}\n---\n${body}`;
 }
 

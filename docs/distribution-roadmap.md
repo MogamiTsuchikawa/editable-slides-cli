@@ -6,31 +6,31 @@
 ## 結論
 
 リポジトリをcloneせず、公開npmから導入して使う単一CLI packageは
-実装済みである。package名は`livetoon-slide`で、内部処理、会社テーマ、
+実装済みである。package名は`editable-slides-cli`で、内部処理、中立な`default` theme、
 Studioをbundleし、`slide new`、`dev`、`lint`、`snapshot`、`export`、`release`を
 利用者の作業場所から実行できる。
 
-新規資料は`slide new -t livetoon "資料名"`または
-`slide new -t tsuchikawa-shuron "修士論文発表"`で開始できる。同梱テンプレートに加え、
-必須manifestを持つZIPテンプレートをHTTPS URLから登録し、
+新規資料は`slide new "資料名"`または`slide new -t default "資料名"`で開始できる。
+組み込みテンプレートは中立な`default`だけである。必須manifestを持つZIPテンプレートを
+HTTPS URLから登録し、
 同じ`-t`指定で再利用できる。
 
 配布用tarballの内容検査、空の一時フォルダへの導入、同梱Studioの起動、
 Linux・macOS・Windowsのsmoke testも自動化済みである。`release`は完成するまで
 一時出力を使い、失敗時に以前の成果物を残すtransaction方式になっている。
 
-公開先はnpmjs.comと公開GitHub repository、公式テンプレートZIPの保管先はS3に
+公開先はnpmjs.comと公開GitHub repository、任意テンプレートZIPの保管先はS3に
 決定した。package metadata、tag限定のrelease workflow、OIDC権限は準備済みである。
-ソースと同梱素材はMIT Licenseで公開する。
+公開npmに同梱するテンプレートは`default`だけである。
 初回だけnpmへ手動publishしてpackageを作成し、その後Trusted Publisherを設定する。
 
 ## 現在の実装状況
 
 | 分類 | 状態 | 現在の内容 | 残課題 |
 |---|---|---|---|
-| 単一CLI package | 実装済み | `livetoon-slide`へCLI、内部package、会社テーマ素材、Studioをbundle | 初回npm publish |
+| 単一CLI package | 実装済み | `editable-slides-cli`へCLI、内部package、`default` theme、Studioをbundle | 初回npm publish |
 | CLI基本操作 | 実装済み | `--version`、コマンド別`--help`、余分な引数の拒否、`setup`、`doctor` | 公開後の案内確認 |
-| テンプレート | 実装済み | 同梱`livetoon`・`tsuchikawa-shuron`、URL ZIPの登録・一覧・削除、SHA-256照合、明示的な更新 | S3 bucket、独自domain、version保持規則の設定 |
+| テンプレート | 実装済み | 同梱`default`、URL ZIPの登録・一覧・削除、SHA-256照合、明示的な更新 | S3 bucket、独自domain、version保持規則の設定 |
 | Studio同梱 | 実装済み | package内の静的Studioと編集APIを、このPC内だけで使えるserverとして起動 | 公開package上での継続的な互換性確認 |
 | 配布テスト | 実装済み | tarball内容、容量、導入、version、doctor、資料作成、厳格lint、PPTX、画像、Studioを検査 | PDFを含む配布testを通常matrixへ入れるか判断 |
 | 3 OS CI | 実装済み | Linux、macOS、Windowsでpackage smokeを実行 | PowerPoint実機は別環境で確認 |
@@ -46,33 +46,33 @@ Linux・macOS・Windowsのsmoke testも自動化済みである。`release`は�
 
 | 案 | メリット | デメリット | 判断 |
 |---|---|---|---|
-| 単一packageへCLI・Studio・内部処理を同梱 | 利用者は1packageだけ導入すればよく、内部packageの版ずれがない | bundleとStudioの同梱buildが必要 | `livetoon-slide`で採用 |
+| 単一packageへCLI・Studio・内部処理を同梱 | 利用者は1packageだけ導入すればよく、内部packageの版ずれがない | bundleとStudioの同梱buildが必要 | `editable-slides-cli`で採用 |
 | 全workspaceを個別packageとして配布 | コンパイラやrendererを個別に再利用できる | 公開順、互換性、権限、バージョン管理が複雑 | 再利用需要が確認された場合だけ検討 |
 | OS別の単体実行ファイルをGitHub Releasesで配布 | Node.jsやnpmに不慣れな利用者にも導入しやすい | OS別buildと署名が必要。ChromiumとPDF検査ツールの扱いも残る | npm版の安定後に検討 |
 
 初期の技術構成は単一packageで確定している。公開先はnpmjs.comと公開GitHub
-repositoryである。GitHub Actionsはpackageを検査し、`.tgz`と公式テンプレートZIPを
-作り、`v<version>`タグの場合だけnpm publishとGitHub Releaseを行う。
+repositoryである。GitHub Actionsはpackageを検査し、`.tgz`を作り、`v<version>`タグの場合だけ
+npm publishとGitHub Releaseを行う。
 
 | 公開範囲 | メリット | デメリット | 判断 |
 |---|---|---|---|
 | 非公開のGitHub Packagesへ全機能を配布 | 会社テーマとブランド素材を社内だけで共有できる | 利用者ごとにGitHub Packagesの認証が必要 | 不採用 |
-| 公開npmへcore/CLI、非公開packageへ会社テーマを分離 | 一般機能を簡単に導入でき、ブランド素材を保護できる | package分割と2系統のrelease管理が必要 | 社外公開する場合の候補 |
-| 会社テーマを含めて公開npmへ配布 | 導入が最も簡単 | ブランド素材・名称・依存物を公開できる権利確認が必須 | 採用。MIT Licenseで配布 |
+| 公開npmへcore/CLI、非公開packageへ会社テーマを分離 | 一般機能を簡単に導入でき、ブランド素材を保護できる | package分割と2系統のrelease管理が必要 | 将来の候補 |
+| 公開npmには中立なCLI・`default`テンプレートだけを配布し、任意テンプレートをURL配布 | 導入を簡単に保ちつつ、テンプレートの公開範囲を管理できる | template URLの運用が必要 | 採用 |
 
 ## P0: インストール可能なCLI
 
 ### 実装済み
 
 - コマンドを実行した場所を利用者の作業場所として扱い、成果物もそこへ生成する。
-- CLIの実行コードへ内部packageをbundleし、Studioの静的ファイルと会社テーマ素材を同梱する。
+- CLIの実行コードへ内部packageをbundleし、Studioの静的ファイルと中立な`default` themeを同梱する。
 - `slide --version`、コマンド別`--help`、未知のコマンドと余分な引数の検出を提供する。
-- `slide new -t livetoon "資料名"`で、表示名を保ったまま内部IDを自動生成する。
-- `slide new -t tsuchikawa-shuron "修士論文発表"`で、PPTX由来の修論向けテーマから資料を作成する。
+- `slide new "資料名"`または`slide new -t default "資料名"`で、表示名を保ったまま内部IDを自動生成する。
 - 必須manifestを持つZIPテンプレートをURLから登録・一覧・削除し、HTTPS、
   SHA-256照合、同名更新の明示指定を扱う。
-- 公式Livetoon ZIPとSHA-256を決定的に生成し、package workflowの独立した
-  artifactとして出力する。ZIP本体は原本と重複するためGit管理しない。
+- LivetoonテンプレートのZIPとSHA-256を決定的に生成する。会社テーマは検証可能な
+  `theme.json`としてZIPへ含める。Livetoonと`tsuchikawa-shuron`の原本は
+  リポジトリ直下の`templates/`に残すが、npm packageとGitHub Releaseには含めない。
 - Chromiumを`slide setup`で準備し、Node.js、npm、Chromium、Poppler、任意のOffice環境を`slide doctor`で診断する。
 - `.tgz`を空の一時フォルダへ導入し、monorepo外からコマンドとStudioを動かす。
 - Linux、macOS、WindowsのCIで同じpackage smokeを実行する。
@@ -140,15 +140,15 @@ macOS arm64、Node.js 24で、同じ資料を各5回コンパイルした基準�
 
 | 項目 | 現在 | 公開前に必要なこと |
 |---|---|---|
-| package名・scope | `livetoon-slide`、公開npm | 初回publish時に名前を最終確認する |
+| package名・scope | `editable-slides-cli`、公開npm | 初回publish時に名前を最終確認する |
 | LICENSE | MIT Licenseを配置 | 年や著作権表示を変更する場合だけ更新する |
-| ブランド権利 | MIT Licenseで配布 | 公開権限をpackage所有者が最終確認する |
-| GitHub repository | `MogamiTsuchikawa/livetoon-slide`を公開repositoryとして作成 | branch保護とnpm環境の承認者を設定する |
+| ブランド権利 | 公開npmから会社テーマ・素材を除外 | GitHub sourceとS3テンプレートの公開範囲を最終確認する |
+| GitHub repository | `MogamiTsuchikawa/editable-slides-cli`を公開repositoryとして作成 | branch保護とnpm環境の承認者を設定する |
 | package metadata | `files`、`bin`、`engines`、`repository`、`bugs`、`publishConfig`を設定 | 初回tarballを最終確認する |
-| version・変更履歴 | 0.1.0、CHANGELOG、`v<version>`tag規則 | 初回tagを作成する |
+| version・変更履歴 | 0.1.0、CHANGELOG、`v<version>`tag規則 | 初回手動publish後は0.1.1以降へ更新してtagを作成する |
 | npm認証 | npm 11.5.1、GitHub Actions OIDCを設定 | 初回publish後に`release.yml`、environment `npm`でTrusted Publisherを登録する |
 | テンプレート配布 | S3に決定。決定的ZIPとSHA-256を生成 | bucket、独自domain、cache、version保持を設定する |
-| 実公開 | 未実施 | 初回publish、Trusted Publisher登録、tag releaseの順で実施する |
+| 実公開 | 未実施 | 0.1.0の初回手動publish、Trusted Publisher登録、次versionのtag releaseの順で実施する |
 
 公開前には、利用する時点のnpm公式要件に合うNode.js・npmへrelease環境を固定し、
 tarball内容、機密情報、依存脆弱性、golden deckを再検査する。
@@ -169,7 +169,8 @@ tarball内容、機密情報、依存脆弱性、golden deckを再検査する�
 ## 外部で行う判断・作業
 
 1. 公開GitHub repositoryでCI結果を確認し、branch保護と`npm` environmentを設定する。
-2. ブランド素材・名称を公開できる権限をpackage所有者が最終確認する。
-3. npmへ0.1.0を初回publishし、`release.yml`をTrusted Publisherへ登録する。
+2. GitHub sourceとS3テンプレートで、ブランド素材・名称を共有できる範囲を最終確認する。
+3. npmへ0.1.0を初回publishし、`release.yml`をTrusted Publisherへ登録する。次回は
+   versionを0.1.1以降へ上げてからtagを作成する。
 4. S3へversion付きテンプレートZIPとSHA-256を配置し、URLを案内へ反映する。
 5. Windows PowerPointで動画・音声・字幕を含む成果物を確認する。

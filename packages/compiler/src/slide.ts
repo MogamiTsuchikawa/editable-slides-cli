@@ -5,12 +5,12 @@ import type {
   SlideIR,
   TextElementIR,
   TextStyleIR,
-} from "@livetoon/slide-deck-ir";
+} from "@editable-slides/slide-deck-ir";
 import type {
   LayoutDefinition,
   LayoutSlotDefinition,
   ThemeDefinition,
-} from "@livetoon/slide-theme-default";
+} from "@editable-slides/slide-theme-default";
 
 import { compileImageBackground } from "./background.js";
 import { compileComponent } from "./components.js";

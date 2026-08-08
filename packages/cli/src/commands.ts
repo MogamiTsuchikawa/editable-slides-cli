@@ -17,15 +17,15 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import { DeckCompileError, serializeDeck } from "@livetoon/slide-compiler";
-import type { DeckIR, ElementIR, ParagraphIR } from "@livetoon/slide-deck-ir";
+import { DeckCompileError, serializeDeck } from "@editable-slides/slide-compiler";
+import type { DeckIR, ElementIR, ParagraphIR } from "@editable-slides/slide-deck-ir";
 import {
   detectChromiumExecutable,
   exportPdf,
   probePdfTool,
-} from "@livetoon/slide-exporter-pdf";
-import { assertPptx, inspectPptx } from "@livetoon/slide-qa-pptx";
-import { writePptxFile } from "@livetoon/slide-renderer-pptx";
+} from "@editable-slides/slide-exporter-pdf";
+import { assertPptx, inspectPptx } from "@editable-slides/slide-qa-pptx";
+import { writePptxFile } from "@editable-slides/slide-renderer-pptx";
 import chokidar from "chokidar";
 import { chromium, type Page } from "playwright";
 import { parse as parseYaml } from "yaml";

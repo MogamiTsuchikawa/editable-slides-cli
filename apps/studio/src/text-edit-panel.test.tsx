@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { TextElementIR } from "@livetoon/slide-deck-ir";
+import type { TextElementIR } from "@editable-slides/slide-deck-ir";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
