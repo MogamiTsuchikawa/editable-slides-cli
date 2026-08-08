@@ -97,5 +97,5 @@ Studioの位置調整を元の資料へ反映する場合は`slide layout bake <
 コマンド一覧は`slide --help`、各コマンドの詳細は
 `slide <command> --help`で確認できます。
 
-初回公開前の候補版は、GitHub Actionsのartifactまたは`npm pack`で作った
-`.tgz`からも試せます。ライセンスはMITです。
+`editable-slides-cli@0.1.0`は公開済みです。開発中の候補版は、GitHub Actionsの
+artifactまたは`npm pack`で作った`.tgz`からも試せます。ライセンスはMITです。

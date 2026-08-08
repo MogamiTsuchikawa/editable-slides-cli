@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-08
+
 - PowerPoint由来の青緑デザインを`tsuchikawa-shuron`テーマ・テンプレート原本として追加。
 - 公開package名を`editable-slides-cli`に確定し、npm Trusted Publishing向けの
   tag release workflow、3 OS package検査、成果物の来歴証明を追加。
@@ -13,8 +15,6 @@
   `theme.json`としてZIPへ含める処理を追加。Livetoonと
   `tsuchikawa-shuron`の原本はリポジトリ直下の`templates/`に置き、公開npmや
   GitHub Releaseへは含めない。
-
-## [0.1.0] - 2026-08-01
 
 - 空のフォルダへ導入できる単一CLI packageと、同梱Studioを追加。
 - ローカル動画・音声、画像調整、図解、コード表示、拡張グラフを追加。

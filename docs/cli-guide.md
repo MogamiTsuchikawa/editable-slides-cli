@@ -232,6 +232,7 @@ npm pack --workspace=editable-slides-cli
 PPTX出力、同梱Studioの起動を確認する。`SLIDE_PACKAGE_PDF=1`を付けた場合は
 PDF出力も確認する。
 
-初回公開前は`npm pack --workspace=editable-slides-cli`で作った`.tgz`を使って確認する。
-ライセンスはMITである。初回だけ手動publishし、その後は`v<version>`タグの
-release workflowから公開する。
+`editable-slides-cli@0.1.0`は2026年8月8日に手動publish済みである。開発中の版は
+`npm pack --workspace=editable-slides-cli`で作った`.tgz`を使って確認する。
+ライセンスはMITである。Trusted Publisherは登録済みであり、0.1.1以降は
+`v<version>`タグのrelease workflowから公開し、自動公開を確認する。

@@ -19,7 +19,7 @@ AIは初回準備、構成、選択したテーマでの制作、発表者原稿
 
 ## CLIで使う
 
-公開後は、npmから1コマンドで導入し、リポジトリをcloneせずに利用できます。
+npmから1コマンドで導入し、リポジトリをcloneせずに利用できます。
 
 ```bash
 npm install --global editable-slides-cli
@@ -45,8 +45,9 @@ slide new -t sales "営業提案資料"
 ZIPの構成、更新・削除、安全な登録方法は
 [`docs/cli-guide.md`](./docs/cli-guide.md#urlからテンプレートを追加する)を参照してください。
 
-初回公開前に試す場合は、GitHub Actionsの`package` workflow、またはローカルの
-`npm pack`で作成した`.tgz`を導入できます。ライセンスはMITです。
+`editable-slides-cli@0.1.0`は公開済みです。開発中の候補版を試す場合は、
+GitHub Actionsの`package` workflow、またはローカルの`npm pack`で作成した
+`.tgz`を導入できます。ライセンスはMITです。
 
 配布用tarballをローカルで作る場合は次を実行します。
 

@@ -20,16 +20,18 @@ Linux・macOS・Windowsのsmoke testも自動化済みである。`release`は�
 一時出力を使い、失敗時に以前の成果物を残すtransaction方式になっている。
 
 公開先はnpmjs.comと公開GitHub repository、任意テンプレートZIPの保管先はS3に
-決定した。package metadata、tag限定のrelease workflow、OIDC権限は準備済みである。
+決定した。package metadata、tag限定のrelease workflow、OIDC権限、
+Trusted Publisherは設定済みである。
 公開npmに同梱するテンプレートは`default`だけである。
-初回だけnpmへ手動publishしてpackageを作成し、その後Trusted Publisherを設定する。
+`editable-slides-cli@0.1.0`は2026年8月8日にnpmへ公開済みである。
+次に0.1.1以降をtag releaseし、自動公開を確認する。
 
 ## 現在の実装状況
 
 | 分類 | 状態 | 現在の内容 | 残課題 |
 |---|---|---|---|
-| 単一CLI package | 実装済み | `editable-slides-cli`へCLI、内部package、`default` theme、Studioをbundle | 初回npm publish |
-| CLI基本操作 | 実装済み | `--version`、コマンド別`--help`、余分な引数の拒否、`setup`、`doctor` | 公開後の案内確認 |
+| 単一CLI package | 公開済み | `editable-slides-cli`へCLI、内部package、`default` theme、Studioをbundle | 公開版の継続的な互換性確認 |
+| CLI基本操作 | 実装済み | `--version`、コマンド別`--help`、余分な引数の拒否、`setup`、`doctor` | 利用者からのフィードバック反映 |
 | テンプレート | 実装済み | 同梱`default`、URL ZIPの登録・一覧・削除、SHA-256照合、明示的な更新 | S3 bucket、独自domain、version保持規則の設定 |
 | Studio同梱 | 実装済み | package内の静的Studioと編集APIを、このPC内だけで使えるserverとして起動 | 公開package上での継続的な互換性確認 |
 | 配布テスト | 実装済み | tarball内容、容量、導入、version、doctor、資料作成、厳格lint、PPTX、画像、Studioを検査 | PDFを含む配布testを通常matrixへ入れるか判断 |
@@ -40,7 +42,7 @@ Linux・macOS・Windowsのsmoke testも自動化済みである。`release`は�
 | transaction | 実装済み | `release`をstagingで完成させてから切り替え、失敗時は旧成果物を保持。単一ファイル更新も一時ファイルから置換 | 複数の正本ファイルを同時更新する機能を増やす場合は追加設計 |
 | セキュリティ | 実装済み | 素材参照、symlink、容量、形式、SVG、URL、独自テーマ、Studio host・origin・CSPを制限 | 第三者レビュー。対応版のない画像依存の2件は到達不能性をtestで固定し、他の高・重大問題は公開を停止 |
 | 性能計測 | 実装済み | `slide benchmark`と30・50ページの基準値を用意 | 継続計測の閾値設定は利用状況を見て判断 |
-| 公開npm / GitHub | 準備中 | 公開repository、公開metadata、tag release、3 OS smoke、OIDC、provenanceを設定 | 初回npm publish、Trusted Publisher登録 |
+| 公開npm / GitHub | npm公開済み | 公開repository、公開metadata、0.1.0、tag release、3 OS smoke、OIDC、provenance、Trusted Publisherを設定 | 次回tag releaseの確認 |
 
 ## 配布構成
 
@@ -136,21 +138,22 @@ macOS arm64、Node.js 24で、同じ資料を各5回コンパイルした基準�
 
 ## P1: 公開npm / GitHubリリース
 
-公開に必要なrepository側の実装は準備中であり、npmへの実publishとは区別する。
+`editable-slides-cli@0.1.0`はnpmへ公開済みである。repository側のtag release実装と
+npmのTrusted Publisher登録も完了し、次は0.1.1以降のtag releaseを確認する。
 
-| 項目 | 現在 | 公開前に必要なこと |
+| 項目 | 現在 | 次に必要なこと |
 |---|---|---|
-| package名・scope | `editable-slides-cli`、公開npm | 初回publish時に名前を最終確認する |
+| package名・scope | `editable-slides-cli@0.1.0`を公開npmへ登録済み | 次回以降も同じpackage名を使う |
 | LICENSE | MIT Licenseを配置 | 年や著作権表示を変更する場合だけ更新する |
 | ブランド権利 | 公開npmから会社テーマ・素材を除外 | GitHub sourceとS3テンプレートの公開範囲を最終確認する |
 | GitHub repository | `MogamiTsuchikawa/editable-slides-cli`を公開repositoryとして作成 | branch保護とnpm環境の承認者を設定する |
-| package metadata | `files`、`bin`、`engines`、`repository`、`bugs`、`publishConfig`を設定 | 初回tarballを最終確認する |
-| version・変更履歴 | 0.1.0、CHANGELOG、`v<version>`tag規則 | 初回手動publish後は0.1.1以降へ更新してtagを作成する |
-| npm認証 | npm 11.5.1、GitHub Actions OIDCを設定 | 初回publish後に`release.yml`、environment `npm`でTrusted Publisherを登録する |
+| package metadata | `files`、`bin`、`engines`、`repository`、`bugs`、`publishConfig`を設定・公開済み | 次回tarballでも内容検査を継続する |
+| version・変更履歴 | 0.1.0を公開済み、CHANGELOG、`v<version>`tag規則 | 0.1.1以降へ更新してtagを作成する |
+| npm認証 | 0.1.0はnpm 11.5.1で手動publish済み。GitHub Actions OIDCとTrusted Publisherを設定済み | 次回tag releaseでOIDC認証を確認する |
 | テンプレート配布 | S3に決定。決定的ZIPとSHA-256を生成 | bucket、独自domain、cache、version保持を設定する |
-| 実公開 | 未実施 | 0.1.0の初回手動publish、Trusted Publisher登録、次versionのtag releaseの順で実施する |
+| 実公開 | 0.1.0を2026年8月8日に公開済み | 次versionのtag releaseを確認する |
 
-公開前には、利用する時点のnpm公式要件に合うNode.js・npmへrelease環境を固定し、
+次回リリース前には、利用する時点のnpm公式要件に合うNode.js・npmへrelease環境を固定し、
 tarball内容、機密情報、依存脆弱性、golden deckを再検査する。
 
 ## リリース受入条件の現在地
@@ -164,13 +167,12 @@ tarball内容、機密情報、依存脆弱性、golden deckを再検査する�
 | PPTXの対応要素が標準要素として編集可能である | 内部検査とmacOS PowerPoint実機で確認済み。Windows実機確認は外部作業 |
 | PDFのページ、本文、フォント検査が成功する | Popplerを含む通常QAで確認 |
 | packageに入力資料、元PPTX、テスト成果物、秘密情報が含まれない | tarball allowlistで確認済み |
-| 公開releaseを承認、タグ、CHANGELOGから追跡できる | 未実施 |
+| 公開releaseを承認、タグ、CHANGELOGから追跡できる | 0.1.0のnpm公開とCHANGELOGは確認済み。tag releaseは次回確認 |
 
 ## 外部で行う判断・作業
 
 1. 公開GitHub repositoryでCI結果を確認し、branch保護と`npm` environmentを設定する。
 2. GitHub sourceとS3テンプレートで、ブランド素材・名称を共有できる範囲を最終確認する。
-3. npmへ0.1.0を初回publishし、`release.yml`をTrusted Publisherへ登録する。次回は
-   versionを0.1.1以降へ上げてからtagを作成する。
+3. 次回はversionを0.1.1以降へ上げてからtagを作成し、自動公開を確認する。
 4. S3へversion付きテンプレートZIPとSHA-256を配置し、URLを案内へ反映する。
 5. Windows PowerPointで動画・音声・字幕を含む成果物を確認する。
