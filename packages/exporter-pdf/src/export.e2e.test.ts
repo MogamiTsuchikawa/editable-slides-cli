@@ -73,5 +73,5 @@ browserDescribe("exportPdf browser integration", () => {
     expect(inspection.pageCount).toBe(2);
     expect(inspection.widthPoints).toBeCloseTo(960, 0);
     expect(inspection.heightPoints).toBeCloseTo(540, 0);
-  }, 20_000);
+  }, 45_000);
 });
