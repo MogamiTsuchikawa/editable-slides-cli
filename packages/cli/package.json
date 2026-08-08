@@ -1,8 +1,25 @@
 {
-  "name": "@livetoon/slide-cli",
+  "name": "livetoon-slide",
   "version": "0.1.0",
-  "private": true,
   "description": "CLI for creating, previewing, validating, and exporting Livetoon Slide decks",
+  "keywords": [
+    "slides",
+    "presentation",
+    "powerpoint",
+    "pptx",
+    "pdf",
+    "livetoon"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/MogamiTsuchikawa/livetoon-slide#readme",
+  "bugs": {
+    "url": "https://github.com/MogamiTsuchikawa/livetoon-slide/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MogamiTsuchikawa/livetoon-slide.git",
+    "directory": "packages/cli"
+  },
   "type": "module",
   "files": [
     "dist"
@@ -12,6 +29,11 @@
   },
   "engines": {
     "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "node scripts/build-package.mjs",
@@ -33,6 +55,7 @@
     "@livetoon/slide-renderer-pptx": "*",
     "@livetoon/slide-theme-company": "*",
     "@livetoon/slide-theme-default": "*",
+    "@livetoon/slide-theme-tsuchikawa-shuron": "*",
     "@types/node": "^24.10.0",
     "@types/yauzl": "3.4.0",
     "chokidar": "^4.0.3",

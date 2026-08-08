@@ -61,6 +61,20 @@ describe("CLI arguments", () => {
     expect(source).toContain('theme: "company"');
   });
 
+  it("creates a deck from the tsuchikawa-shuron built-in template", async () => {
+    const parent = await mkdtemp(path.join(tmpdir(), "tsuchikawa-shuron-cli-new-"));
+    temporaryDirectories.push(parent);
+    const target = path.join(parent, "土川修士論文");
+    vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await main(["new", "-t", "tsuchikawa-shuron", target]);
+
+    const source = await readFile(path.join(target, "deck.mdx"), "utf8");
+    expect(source).toContain('title: "土川修士論文"');
+    expect(source).toContain('theme: "tsuchikawa-shuron"');
+    expect(source).toContain("# 土川修士論文");
+  });
+
   it("lists the built-in template through the template command", async () => {
     const parent = await mkdtemp(path.join(tmpdir(), "livetoon-slide-cli-template-"));
     temporaryDirectories.push(parent);
@@ -70,6 +84,9 @@ describe("CLI arguments", () => {
     await main(["template", "list"]);
 
     expect(output).toHaveBeenCalledWith(expect.stringContaining("livetoon\tbuilt-in"));
+    expect(output).toHaveBeenCalledWith(
+      expect.stringContaining("tsuchikawa-shuron\tbuilt-in"),
+    );
   });
 
   it("rejects arguments passed to doctor", async () => {

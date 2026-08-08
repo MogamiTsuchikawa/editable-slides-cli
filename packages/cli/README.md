@@ -5,7 +5,7 @@
 ## 初回準備
 
 ```bash
-npm install --global ./livetoon-slide-cli-0.1.0.tgz
+npm install --global livetoon-slide
 slide setup
 slide doctor
 ```
@@ -28,11 +28,14 @@ PopplerはOSに合わせて次のいずれかで準備できます。
 
 ```bash
 slide new -t livetoon "資料名"
+slide new -t tsuchikawa-shuron "修士論文発表"
 slide dev "資料名" --open
 slide release "資料名"
 ```
 
 `livetoon`は同梱のテンプレートで、Livetoonの`company`テーマを使います。
+`tsuchikawa-shuron`も同梱され、青緑の帯と白地を使う修士論文発表向けの
+テーマを適用します。
 日本語の資料名はそのままフォルダ名と表示名になり、内部IDは自動で作られます。
 
 ## URLからテンプレートを追加する
@@ -85,7 +88,7 @@ slide template remove sales
 ```
 
 公式Livetoon ZIPをURL経由で確認する場合は、組み込み版と異なる登録名を
-指定します。組み込みの`livetoon`自体は上書きできません。
+指定します。組み込みの`livetoon`と`tsuchikawa-shuron`は上書きできません。
 
 ```bash
 slide template add https://example.com/livetoon-template-1.0.0.zip \
@@ -104,5 +107,5 @@ Studioの位置調整を元の資料へ反映する場合は`slide layout bake <
 公式ZIPを作る担当者は、リポジトリのルートで`npm run build:template`を
 実行します。決定的なZIPとSHA-256が`artifacts/templates/`へ生成されます。
 
-このpackageは、公開範囲、ブランド素材、ライセンスが確定するまで
-非公開設定のまま配布試験を行います。
+初回公開前の候補版は、GitHub Actionsのartifactまたは`npm pack`で作った
+`.tgz`からも試せます。ライセンスはMITです。

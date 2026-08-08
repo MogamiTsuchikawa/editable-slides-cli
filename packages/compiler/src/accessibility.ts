@@ -192,39 +192,65 @@ function baseBackground(slide: SlideIR, theme: ThemeDefinition): RgbColor {
 
 function backgroundForText(
   text: TextElementIR,
-  elements: readonly ElementIR[],
+  slideElements: readonly ElementIR[],
+  masterElements: readonly ElementIR[],
   slideBackground: RgbColor,
 ): RgbColor {
-  const shapes = elements
+  const masterShapes = masterElements
     .filter(
-      (element): element is Extract<ElementIR, { type: "shape" }> =>
+      (
+        element,
+      ): element is Extract<ElementIR, { type: "shape" }> & {
+        fill: Extract<FillIR, { type: "solid" }>;
+      } =>
+        element.type === "shape" &&
+        contains(element.frame, text.frame) &&
+        element.fill.type === "solid",
+    )
+    .sort((left, right) => left.zIndex - right.zIndex);
+  const slideShapes = slideElements
+    .filter(
+      (
+        element,
+      ): element is Extract<ElementIR, { type: "shape" }> & {
+        fill: Extract<FillIR, { type: "solid" }>;
+      } =>
         element.type === "shape" &&
         element.zIndex < text.zIndex &&
         contains(element.frame, text.frame) &&
         element.fill.type === "solid",
     )
-    .sort((left, right) => right.zIndex - left.zIndex);
-  const shape = shapes[0];
-  if (!shape) return slideBackground;
-  const color = parseColor(shape.fill.type === "solid" ? shape.fill.color : undefined);
-  if (!color) return slideBackground;
-  const transparency = shape.fill.type === "solid" ? (shape.fill.transparency ?? 0) : 0;
-  return composite(
-    withOpacity(color, shape.opacity * (1 - transparency / 100)),
-    slideBackground,
-  );
+    .sort((left, right) => left.zIndex - right.zIndex);
+
+  let background = slideBackground;
+  for (const shape of [...masterShapes, ...slideShapes]) {
+    const color = parseColor(shape.fill.color);
+    if (!color) continue;
+    const transparency = shape.fill.transparency ?? 0;
+    background = composite(
+      withOpacity(color, shape.opacity * (1 - transparency / 100)),
+      background,
+    );
+  }
+  return background;
 }
 
 function contrastIssues(
   slide: SlideIR,
   theme: ThemeDefinition,
-  elements: readonly ElementIR[],
+  textElements: readonly ElementIR[],
+  masterElements: readonly ElementIR[],
 ): AccessibilityIssue[] {
   const issues: AccessibilityIssue[] = [];
   const slideBackground = baseBackground(slide, theme);
-  for (const element of elements) {
+  for (const element of textElements) {
     if (element.type !== "text") continue;
-    const background = backgroundForText(element, elements, slideBackground);
+    const background = backgroundForText(
+      element,
+      textElements,
+      masterElements,
+      slideBackground,
+    );
     const backgroundHex = `#${[background.red, background.green, background.blue]
       .map((channel) => Math.round(channel).toString(16).padStart(2, "0"))
       .join("")}`;
@@ -333,8 +359,10 @@ export function validateSlideAccessibility(
   theme: ThemeDefinition,
 ): AccessibilityIssue[] {
   const elements = flatten(slide.elements);
+  const master = theme.ir.masters.find((candidate) => candidate.id === slide.masterId);
+  const masterElements = flatten(master?.elements ?? []);
   return [
-    ...contrastIssues(slide, theme, elements),
+    ...contrastIssues(slide, theme, elements, masterElements),
     ...readingOrderIssues(elements),
     ...safeAreaIssues(elements, theme.ir.safeArea),
   ];

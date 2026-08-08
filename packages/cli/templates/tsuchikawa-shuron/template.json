@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "tsuchikawa-shuron",
+  "name": "tsuchikawa-shuron",
+  "version": "1.0.0",
+  "entry": "deck.mdx",
+  "theme": "tsuchikawa-shuron",
+  "description": "青緑の帯と広い余白を使う修士論文発表向けテンプレートです。"
+}

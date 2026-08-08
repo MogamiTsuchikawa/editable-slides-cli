@@ -18,12 +18,17 @@ import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 
 import { compileDeckDirectory } from "@livetoon/slide-compiler";
-import { companyTheme } from "@livetoon/slide-theme-company";
-import { defaultTheme } from "@livetoon/slide-theme-default";
 import { parseDocument } from "yaml";
 import { type Entry, fromBufferPromise } from "yauzl";
+import {
+  BUILT_IN_THEME_IDS,
+  type BuiltInThemeId,
+  isBuiltInThemeId,
+  resolveBuiltInTheme,
+} from "./themes.js";
 
-const BUILT_IN_TEMPLATE = "livetoon";
+const DEFAULT_BUILT_IN_TEMPLATE = "livetoon";
+const BUILT_IN_TEMPLATES = ["livetoon", "tsuchikawa-shuron"] as const;
 const TEMPLATE_SCHEMA_VERSION = 1;
 const MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024;
 const MAX_EXTRACTED_BYTES = 100 * 1024 * 1024;
@@ -80,7 +85,7 @@ export interface TemplateManifest {
   name: string;
   version: string;
   entry: "deck.mdx";
-  theme: "company" | "default";
+  theme: BuiltInThemeId;
   description?: string;
   license?: string;
 }
@@ -129,8 +134,25 @@ interface ValidatedArchiveEntry {
   directory: boolean;
 }
 
-function builtInTemplateDirectory(): string {
-  return fileURLToPath(new URL("../templates/livetoon", import.meta.url));
+function isBuiltInTemplate(name: string): boolean {
+  return (BUILT_IN_TEMPLATES as readonly string[]).includes(name);
+}
+
+function builtInTemplateDirectory(name: string): string {
+  const root = fileURLToPath(new URL("../templates", import.meta.url));
+  return path.join(root, name);
+}
+
+function isTemplateTheme(value: string): value is TemplateManifest["theme"] {
+  return isBuiltInThemeId(value);
+}
+
+function templateTheme(manifest: TemplateManifest) {
+  const theme = resolveBuiltInTheme(manifest.theme);
+  if (!theme) {
+    throw new Error(`組み込みテーマ${manifest.theme}を読み取れません。`);
+  }
+  return theme;
 }
 
 export function resolveTemplateDataHome(
@@ -248,8 +270,10 @@ export function parseTemplateManifest(contents: string): TemplateManifest {
     throw new Error("template.jsonのentryはdeck.mdxを指定してください。");
   }
   const theme = requiredManifestString(value, "theme", 100);
-  if (theme !== "company" && theme !== "default") {
-    throw new Error("URLテンプレートのthemeはcompanyまたはdefaultに限定しています。");
+  if (!isTemplateTheme(theme)) {
+    throw new Error(
+      `URLテンプレートのthemeは${BUILT_IN_THEME_IDS.join("、")}に限定しています。`,
+    );
   }
   const description =
     value.description === undefined
@@ -702,7 +726,7 @@ async function validateTemplateDeck(
 ): Promise<void> {
   try {
     await compileDeckDirectory(directory, {
-      theme: manifest.theme === "company" ? companyTheme : defaultTheme,
+      theme: templateTheme(manifest),
     });
   } catch {
     throw new Error(
@@ -792,8 +816,8 @@ export async function addTemplateFromUrl(
     options.name === undefined
       ? undefined
       : validateTemplateName(options.name, "--name");
-  if (requestedName === BUILT_IN_TEMPLATE) {
-    throw new Error(`組み込みテンプレート${BUILT_IN_TEMPLATE}は上書きできません。`);
+  if (requestedName && isBuiltInTemplate(requestedName)) {
+    throw new Error(`組み込みテンプレート${requestedName}は上書きできません。`);
   }
   const expectedHash = validateExpectedHash(options.sha256);
   const downloaded = await downloadArchive(source, options.allowHttp ?? false);
@@ -813,9 +837,9 @@ export async function addTemplateFromUrl(
   try {
     const manifest = await extractArchive(downloaded.data, filesDirectory);
     const registryName = requestedName ?? manifest.id;
-    if (registryName === BUILT_IN_TEMPLATE) {
+    if (isBuiltInTemplate(registryName)) {
       throw new Error(
-        `組み込みテンプレート${BUILT_IN_TEMPLATE}は上書きできません。別名で登録する場合は--nameを指定してください。`,
+        `組み込みテンプレート${registryName}は上書きできません。別名で登録する場合は--nameを指定してください。`,
       );
     }
     await validateTemplateDeck(filesDirectory, manifest);
@@ -879,16 +903,26 @@ export async function addTemplateFromUrl(
 }
 
 export async function listTemplates(): Promise<TemplateSummary[]> {
-  const builtInManifest = await readManifest(
-    path.join(builtInTemplateDirectory(), "template.json"),
+  const summaries = await Promise.all(
+    BUILT_IN_TEMPLATES.map(async (registryName) => {
+      const manifest = await readManifest(
+        path.join(builtInTemplateDirectory(registryName), "template.json"),
+      );
+      return toSummary(registryName, manifest, { builtIn: true });
+    }),
   );
-  const summaries = [toSummary(BUILT_IN_TEMPLATE, builtInManifest, { builtIn: true })];
   const root = templatesRoot();
   const entries = await readdir(root, { withFileTypes: true }).catch(() => []);
   for (const entry of entries.sort((left, right) =>
     left.name.localeCompare(right.name),
   )) {
-    if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+    if (
+      !entry.isDirectory() ||
+      entry.name.startsWith(".") ||
+      isBuiltInTemplate(entry.name)
+    ) {
+      continue;
+    }
     const metadata = await readInstalledMetadata(path.join(root, entry.name));
     summaries.push(
       toSummary(metadata.registryName, metadata.manifest, {
@@ -903,8 +937,8 @@ export async function listTemplates(): Promise<TemplateSummary[]> {
 
 export async function removeTemplate(name: string): Promise<void> {
   const registryName = validateTemplateName(name);
-  if (registryName === BUILT_IN_TEMPLATE) {
-    throw new Error(`組み込みテンプレート${BUILT_IN_TEMPLATE}は削除できません。`);
+  if (isBuiltInTemplate(registryName)) {
+    throw new Error(`組み込みテンプレート${registryName}は削除できません。`);
   }
   const root = templatesRoot();
   await ensureSafeDirectory(root);
@@ -920,9 +954,9 @@ export async function removeTemplate(name: string): Promise<void> {
 export async function resolveTemplate(
   name: string | undefined,
 ): Promise<TemplateSource> {
-  const registryName = validateTemplateName(name ?? BUILT_IN_TEMPLATE);
-  if (registryName === BUILT_IN_TEMPLATE) {
-    const directory = builtInTemplateDirectory();
+  const registryName = validateTemplateName(name ?? DEFAULT_BUILT_IN_TEMPLATE);
+  if (isBuiltInTemplate(registryName)) {
+    const directory = builtInTemplateDirectory(registryName);
     return {
       registryName,
       manifest: await readManifest(path.join(directory, "template.json")),

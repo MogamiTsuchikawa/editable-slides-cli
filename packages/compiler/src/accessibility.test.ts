@@ -123,6 +123,100 @@ describe("slide accessibility diagnostics", () => {
     );
   });
 
+  it("uses solid master shapes when checking text contrast", () => {
+    const theme = structuredClone(defaultTheme);
+    theme.ir.masters.push({
+      id: "teal-title-master",
+      background: { type: "solid", color: "#FFFFFF" },
+      elements: [
+        {
+          id: "teal-title-band",
+          type: "shape",
+          shape: "rect",
+          frame: { x: 0, y: 0, w: 1920, h: 170 },
+          rotation: 0,
+          zIndex: 100,
+          opacity: 1,
+          locked: true,
+          editable: false,
+          sourceLocation,
+          fill: { type: "solid", color: "#3494BA" },
+        },
+      ],
+    });
+    const candidate = slide([
+      textElement("white-title", { x: 61, y: 0, w: 1658, h: 170 }, "#FFFFFF"),
+    ]);
+    candidate.masterId = "teal-title-master";
+    const title = candidate.elements[0];
+    if (title?.type === "text") {
+      title.style.fontSize = 88;
+      title.style.fontWeight = 700;
+    }
+
+    expect(validateSlideAccessibility(candidate, theme)).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "ACCESSIBILITY_TEXT_CONTRAST_LOW",
+          elementId: "white-title",
+        }),
+      ]),
+    );
+  });
+
+  it("prioritizes slide shapes over master shapes regardless of layer z-index", () => {
+    const theme = structuredClone(defaultTheme);
+    theme.ir.masters.push({
+      id: "layered-title-master",
+      background: { type: "solid", color: "#FFFFFF" },
+      elements: [
+        {
+          id: "master-black-band",
+          type: "shape",
+          shape: "rect",
+          frame: { x: 0, y: 0, w: 1920, h: 170 },
+          rotation: 0,
+          zIndex: 19,
+          opacity: 1,
+          locked: true,
+          editable: false,
+          sourceLocation,
+          fill: { type: "solid", color: "#000000" },
+        },
+      ],
+    });
+    const whiteOverlay: ShapeElementIR = {
+      id: "slide-white-overlay",
+      type: "shape",
+      shape: "rect",
+      frame: { x: 0, y: 0, w: 1920, h: 170 },
+      rotation: 0,
+      zIndex: 1,
+      opacity: 1,
+      editable: true,
+      sourceLocation,
+      fill: { type: "solid", color: "#FFFFFF" },
+    };
+    const title = textElement(
+      "white-title-over-slide-shape",
+      { x: 61, y: 0, w: 1658, h: 170 },
+      "#FFFFFF",
+    );
+    title.style.fontSize = 88;
+    title.style.fontWeight = 700;
+    const candidate = slide([whiteOverlay, title]);
+    candidate.masterId = "layered-title-master";
+
+    expect(validateSlideAccessibility(candidate, theme)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "ACCESSIBILITY_TEXT_CONTRAST_LOW",
+          elementId: "white-title-over-slide-shape",
+        }),
+      ]),
+    );
+  });
+
   it("warns when semantic content is entirely outside the theme safe area", () => {
     const candidate = slide([
       textElement("edge-content", { x: 0, y: 0, w: 80, h: 60 }),

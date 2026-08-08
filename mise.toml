@@ -59,4 +59,4 @@ run = "npm run slide -- export decks/example --format pptx,pdf"
 description = "CIの全品質ゲートを実行する"
 depends = ["setup:ci"]
 env = { SLIDE_BROWSER_E2E = "1", SLIDE_PACKAGE_PDF = "1" }
-run = ["npm run qa", "npm run build", "npm run test:package -w @livetoon/slide-cli", "npm run test:visual", "npm run test:pdf", "npm audit --audit-level=high"]
+run = ["npm run qa", "npm run build", "npm run test:package -w livetoon-slide", "npm run test:visual", "npm run test:pdf", "npm run audit:release"]

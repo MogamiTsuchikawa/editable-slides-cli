@@ -2,10 +2,10 @@
 
 ## 初回準備
 
-配布された`.tgz`を任意の作業フォルダから導入する。
+公開版をnpmから導入する。
 
 ```bash
-npm install --global ./livetoon-slide-cli-0.1.0.tgz
+npm install --global livetoon-slide
 slide setup
 slide doctor
 ```
@@ -43,10 +43,13 @@ Ubuntuの収録コマンドは[Ubuntu公式package一覧](https://packages.ubunt
 
 ```bash
 slide new -t livetoon "資料名"
+slide new -t tsuchikawa-shuron "修士論文発表"
 slide dev "資料名" --open
 ```
 
 `livetoon`はCLIに同梱されたテンプレートで、Livetoonの`company`テーマを使う。
+`tsuchikawa-shuron`も同梱され、青緑の帯と白地を使う修士論文発表向けの
+テーマを適用する。
 日本語の資料名はそのままフォルダ名と表示名になる。資料の処理に必要な英数字の
 内部IDは自動で作られるため、利用者が決める必要はない。
 
@@ -97,7 +100,8 @@ sales-template/
 └── README.md                任意
 ```
 
-`template.json`は次の形式にする。`entry`は`deck.mdx`、`theme`は`company`を指定する。
+`template.json`は次の形式にする。`entry`は`deck.mdx`、`theme`は同梱済みの
+`company`、`default`、`tsuchikawa-shuron`のいずれかを指定する。
 
 ```json
 {
@@ -181,7 +185,7 @@ slide template add https://example.com/livetoon-template-1.0.0.zip \
 | テンプレートを登録できない | URLがHTTPSか、ZIPに`template.json`と`deck.mdx`があるかを確認する |
 | SHA-256が一致しない | 登録を中止し、配布元のURLとSHA-256を確認する。`--force`で回避しない |
 | 同じテンプレート名がある | 内容を確認し、更新する場合だけ`--force`を付ける |
-| 独自テーマが拒否される | 信頼できるテーマだけ、`LIVETOON_ALLOW_CUSTOM_THEME=1`を明示して実行する |
+| 独自テーマが拒否される | 同梱テーマを使うか、信頼できるテーマだけ`LIVETOON_ALLOW_CUSTOM_THEME=1`を明示して実行する |
 | 大きな動画を追加できない | 動画を圧縮する。100MiBを超える素材は通常のGit管理へ直接追加しない |
 
 旧形式を移行するとき、元の`deck.yaml`とページファイルは削除・変更しない。
@@ -212,7 +216,7 @@ ID変更は、接続線の参照と位置調整も同時に更新する。ペー
 ```bash
 npm run build:template
 npm run test:package
-npm pack --workspace=@livetoon/slide-cli
+npm pack --workspace=livetoon-slide
 ```
 
 `build:template`は公式LivetoonテンプレートのZIPとSHA-256を
@@ -223,5 +227,5 @@ GitHub Actionsの配布物として扱う。
 PPTX出力、同梱Studioの起動を確認する。`SLIDE_PACKAGE_PDF=1`を付けた場合は
 PDF出力も確認する。
 
-packageは公開範囲、ブランド素材、ライセンスが確定するまで`private`のまま扱い、
-公開操作は行わない。
+初回公開前は`npm pack --workspace=livetoon-slide`で作った`.tgz`を使って確認する。
+ライセンスはMITである。公開は`v<version>`タグのrelease workflowからだけ行う。
